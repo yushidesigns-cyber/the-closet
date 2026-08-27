@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=7';
-import { store } from './state.js?v=7';
-import { getPhotoUrl } from './photos.js?v=7';
-import { exportBackup } from './backup.js?v=7';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, APP_VERSION } from './constants.js?v=7';
-import * as icon from './icons.js?v=7';
+import { h, clear } from './dom.js?v=8';
+import { store } from './state.js?v=8';
+import { getPhotoUrl } from './photos.js?v=8';
+import { exportBackup } from './backup.js?v=8';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, APP_VERSION } from './constants.js?v=8';
+import * as icon from './icons.js?v=8';
 
 const ac = () => store.accent();
 
@@ -512,19 +512,20 @@ function renderWizard() {
   inner.appendChild(head);
 
   const body = h('div', { class: 'wiz-body' });
-  if (['base', 'blouse', 'footwear', 'jewellery'].includes(curStep.k)) {
+  const isJewelleryStep = curStep.k.indexOf('jewellery:') === 0;
+  if (['base', 'blouse', 'footwear'].includes(curStep.k) || isJewelleryStep) {
     let list = [];
     if (curStep.k === 'base') list = s.items.filter(i => ['Sarees', 'Lehenga', 'Dresses', 'Suits', 'Jumpsuit', 'Tops'].includes(i.cat) && (!w.vibe || i.moods.includes(w.vibe)));
     if (curStep.k === 'blouse') list = s.items.filter(i => i.cat === 'Blouse');
     if (curStep.k === 'footwear') list = s.items.filter(i => i.cat === 'Footwear');
-    if (curStep.k === 'jewellery') list = s.items.filter(i => i.cat === 'Jewellery');
+    if (isJewelleryStep) { const jt = curStep.k.slice('jewellery:'.length); list = s.items.filter(i => i.cat === 'Jewellery' && i.jtype === jt); }
     const selectedId = ({ base: w.baseId, blouse: w.blouseId, footwear: w.shoeId })[curStep.k];
     if (list.length === 0) {
       body.appendChild(h('div', { style: { fontSize: '12px', lineHeight: '1.6', color: '#6B665B' } }, 'Nothing in the wardrobe fits this step yet. Skip it, or add a piece from the Closet first.'));
     } else {
       const grid = h('div', { class: 'wiz-grid' });
       list.forEach(it => {
-        const isSel = curStep.k === 'jewellery' ? w.jewelIds.includes(it.id) : selectedId === it.id;
+        const isSel = isJewelleryStep ? w.jewelIds.includes(it.id) : selectedId === it.id;
         const opt = h('button', { class: 'wiz-option' + (isSel ? ' selected' : ''), onclick: () => store.wizSelect(curStep.k, it.id) });
         opt.appendChild(thumb(it));
         opt.appendChild(h('div', { class: 'wiz-option-body' }, [h('div', { class: 'wiz-option-name' }, it.name), h('div', { class: 'wiz-option-meta' }, it.sub || it.jtype || it.cat)]));
@@ -552,7 +553,7 @@ function renderWizard() {
     const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
     body.appendChild(h('div', { class: 'wiz-review-name' }, w.name.trim() || 'Untitled event'));
     body.appendChild(h('div', { class: 'wiz-review-meta' }, fmt(w.date) + ' · ' + (w.vibe || '—')));
-    const roles = [['Base', w.baseId], ['Blouse', w.blouseId], ['Footwear', w.shoeId]].concat(w.jewelIds.map(id => ['Jewellery', id]));
+    const roles = [['Base', w.baseId], ['Blouse', w.blouseId], ['Footwear', w.shoeId]].concat(w.jewelIds.map(id => { const it = store.byId(id); return [it && it.jtype ? it.jtype : 'Jewellery', id]; }));
     const list = h('div', { style: { marginTop: '14px', display: 'flex', flexDirection: 'column' } });
     roles.filter(r => r[1]).forEach(r => {
       const it = store.byId(r[1]);

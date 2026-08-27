@@ -1,6 +1,6 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=7';
-import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=7';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=8';
+import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=8';
 
 const STATE_KEY = 'state';
 
@@ -248,7 +248,17 @@ class Store {
     const needsBlouse = base && (base.cat === 'Sarees' || base.cat === 'Lehenga');
     const steps = [{ k: 'vibe', t: 'Choose a vibe' }, { k: 'base', t: 'Choose the base piece' }];
     if (needsBlouse || !base) steps.push({ k: 'blouse', t: 'Choose a blouse' });
-    steps.push({ k: 'footwear', t: 'Choose footwear' }, { k: 'jewellery', t: 'Choose jewellery' }, { k: 'details', t: 'Name and date it' }, { k: 'review', t: 'Review' });
+    steps.push({ k: 'footwear', t: 'Choose footwear' });
+    // one step per jewellery type (earrings, rings, necklace, ...) instead
+    // of one grid mixing all of them — and a type with nothing in the
+    // wardrobe simply doesn't get a step at all, rather than showing up as
+    // an empty page to skip through.
+    JTYPES.forEach(jt => {
+      if (this.state.items.some(i => i.cat === 'Jewellery' && i.jtype === jt)) {
+        steps.push({ k: 'jewellery:' + jt, t: 'Choose ' + jt.toLowerCase() });
+      }
+    });
+    steps.push({ k: 'details', t: 'Name and date it' }, { k: 'review', t: 'Review' });
     return steps;
   }
   wizStart() { const d = new Date(); d.setDate(d.getDate() + 14); this.setOverlay({ wiz: { step: 0, vibe: null, baseId: null, blouseId: null, shoeId: null, jewelIds: [], name: '', date: d.toISOString().slice(0, 10) } }); }
@@ -297,7 +307,7 @@ class Store {
   }
   wizSelect(kind, id) {
     const w = this.state.wiz;
-    if (kind === 'jewellery') { const has = w.jewelIds.includes(id); this.setOverlay({ wiz: { ...w, jewelIds: has ? w.jewelIds.filter(x => x !== id) : w.jewelIds.concat([id]) } }); return; }
+    if (kind.indexOf('jewellery') === 0) { const has = w.jewelIds.includes(id); this.setOverlay({ wiz: { ...w, jewelIds: has ? w.jewelIds.filter(x => x !== id) : w.jewelIds.concat([id]) } }); return; }
     const map = { base: 'baseId', blouse: 'blouseId', footwear: 'shoeId' };
     this.state.wiz = { ...w, [map[kind]]: w[map[kind]] === id ? null : id };
     this.notifyOverlay();

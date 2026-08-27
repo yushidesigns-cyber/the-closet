@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=6';
-import { store } from './state.js?v=6';
-import { getPhotoUrl } from './photos.js?v=6';
-import { exportBackup } from './backup.js?v=6';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, APP_VERSION } from './constants.js?v=6';
-import * as icon from './icons.js?v=6';
+import { h, clear } from './dom.js?v=7';
+import { store } from './state.js?v=7';
+import { getPhotoUrl } from './photos.js?v=7';
+import { exportBackup } from './backup.js?v=7';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, APP_VERSION } from './constants.js?v=7';
+import * as icon from './icons.js?v=7';
 
 const ac = () => store.accent();
 
@@ -90,14 +90,15 @@ function screenOutfit() {
       h('div', { class: 'eyebrow' }, lockedCount ? lockedCount + ' locked' : 'Tap lock to hold a piece')
     ]));
     s.slots.forEach((sl, i) => {
+      if (!sl.itemId) return; // nothing suitable was found for this slot — don't show a dead row
       const it = store.byId(sl.itemId);
       const revealed = i < s.reveal;
       const row = h('div', { class: 'outfit-slot', style: { opacity: revealed ? 1 : 0.18 } });
       row.appendChild(thumb(revealed ? it : null));
       row.appendChild(h('div', { class: 'slot-info' }, [
         h('div', { class: 'slot-label' }, sl.label),
-        h('div', { class: 'slot-name' }, revealed ? (it ? it.name : 'Nothing suitable') : ''),
-        h('div', { class: 'slot-sub' }, revealed && it ? (it.sub || it.jtype || it.cat) : '')
+        h('div', { class: 'slot-name' }, revealed ? it.name : ''),
+        h('div', { class: 'slot-sub' }, revealed ? (it.sub || it.jtype || it.cat) : '')
       ]));
       row.appendChild(h('div', { class: 'slot-actions' }, [
         iconBtn(icon.iconLock(sl.locked ? '#F6F4EF' : '#16150F'), () => store.toggleLock(i), { title: 'Lock', locked: sl.locked }),
@@ -595,10 +596,69 @@ function navButtons(activeKey) {
   });
 }
 
-// kept so overlay-only updates (picking a category in the sheet, stepping
-// the wizard, dismissing the toast) can rebuild just the overlay layer
-// without touching the screen behind it (e.g. an 85-photo closet grid).
-let mountedOverlaysEl = null;
+const SCREEN_MAP = { put: screenOutfit, closet: screenCloset, iq: screenIQ, planned: screenPlanned, settings: screenSettings };
+
+// The app shell (nav rails, the .screen scroll container, the bottom nav,
+// the overlays host) is built ONCE and kept mounted from then on. Every
+// earlier bug report of "the page jumps to the top" (locking/shuffling an
+// outfit slot, starring an item, changing a filter, rating an IQ pair —
+// anything that re-renders while scrolled down) traced back to the same
+// cause: renderApp() used to tear down and recreate the whole DOM tree
+// every time, including the .screen div itself, so its scrollTop was
+// always a fresh 0. Now a render only replaces the *contents* of the
+// existing .screen node when the active tab hasn't changed, which leaves
+// its scrollTop untouched; switching tabs still resets to the top, which
+// is the one case where that's actually wanted.
+let mounted = null;
+
+function buildShell(root) {
+  const frame = h('div', { class: 'app-frame' });
+  const shell = h('div', { class: 'shell has-side-nav' });
+
+  const sideNav = h('div', { class: 'side-nav' });
+  shell.appendChild(sideNav);
+
+  const screenArea = h('div', { class: 'screen-area', style: { display: 'flex', flexDirection: 'column', flex: '1', minWidth: 0, minHeight: 0, position: 'relative' } });
+  const screenWrap = h('div', { class: 'screen' });
+  screenArea.appendChild(screenWrap);
+  const bottomNav = h('div', { class: 'bottom-nav' });
+  screenArea.appendChild(bottomNav);
+  const overlaysEl = h('div', { class: 'overlays-root' });
+  screenArea.appendChild(overlaysEl);
+
+  shell.appendChild(screenArea);
+  frame.appendChild(shell);
+  root.appendChild(frame);
+
+  mounted = { root, sideNav, screenWrap, bottomNav, overlaysEl, fabEl: null, lastScreen: null };
+}
+
+function updateNav() {
+  const s = store.state;
+  clear(mounted.sideNav);
+  mounted.sideNav.appendChild(h('div', { class: 'side-brand' }, 'The Closet'));
+  navButtons(s.screen).forEach(b => mounted.sideNav.appendChild(b));
+  clear(mounted.bottomNav);
+  mounted.bottomNav.appendChild(h('div', { class: 'nav-row' }, navButtons(s.screen)));
+}
+
+function updateFab() {
+  const s = store.state;
+  if (mounted.fabEl) { mounted.fabEl.remove(); mounted.fabEl = null; }
+  if (s.screen === 'closet') {
+    mounted.fabEl = h('button', { class: 'fab', onclick: () => store.openAdd() }, [icon.iconPlus(), 'Add piece']);
+    mounted.bottomNav.parentNode.insertBefore(mounted.fabEl, mounted.bottomNav);
+  }
+}
+
+function updateScreenContent() {
+  const s = store.state;
+  const switchedTab = mounted.lastScreen !== s.screen;
+  clear(mounted.screenWrap);
+  mounted.screenWrap.appendChild((SCREEN_MAP[s.screen] || screenOutfit)());
+  if (switchedTab) mounted.screenWrap.scrollTop = 0;
+  mounted.lastScreen = s.screen;
+}
 
 function renderOverlaysInto(container) {
   clear(container);
@@ -611,42 +671,18 @@ function renderOverlaysInto(container) {
 }
 
 export function renderOverlaysOnly(root) {
-  if (!mountedOverlaysEl) { renderApp(root); return; }
-  renderOverlaysInto(mountedOverlaysEl);
+  if (!mounted || mounted.root !== root) { renderApp(root); return; }
+  renderOverlaysInto(mounted.overlaysEl);
 }
 
 export function renderApp(root) {
-  clear(root);
   document.documentElement.style.setProperty('--accent', ac());
-  const s = store.state;
-
-  const frame = h('div', { class: 'app-frame' });
-  const shell = h('div', { class: 'shell has-side-nav' });
-
-  const sideNav = h('div', { class: 'side-nav' });
-  sideNav.appendChild(h('div', { class: 'side-brand' }, 'The Closet'));
-  navButtons(s.screen).forEach(b => sideNav.appendChild(b));
-  shell.appendChild(sideNav);
-
-  const screenArea = h('div', { class: 'screen-area', style: { display: 'flex', flexDirection: 'column', flex: '1', minWidth: 0, minHeight: 0, position: 'relative' } });
-  const screenWrap = h('div', { class: 'screen' });
-  const map = { put: screenOutfit, closet: screenCloset, iq: screenIQ, planned: screenPlanned, settings: screenSettings };
-  screenWrap.appendChild((map[s.screen] || screenOutfit)());
-  screenArea.appendChild(screenWrap);
-
-  if (s.screen === 'closet') {
-    screenArea.appendChild(h('button', { class: 'fab', onclick: () => store.openAdd() }, [icon.iconPlus(), 'Add piece']));
+  if (!mounted || mounted.root !== root) {
+    clear(root);
+    buildShell(root);
   }
-
-  const bottomNav = h('div', { class: 'bottom-nav' }, h('div', { class: 'nav-row' }, navButtons(s.screen)));
-  screenArea.appendChild(bottomNav);
-
-  const overlaysEl = h('div', { class: 'overlays-root' });
-  screenArea.appendChild(overlaysEl);
-  renderOverlaysInto(overlaysEl);
-  mountedOverlaysEl = overlaysEl;
-
-  shell.appendChild(screenArea);
-  frame.appendChild(shell);
-  root.appendChild(frame);
+  updateNav();
+  updateScreenContent();
+  updateFab();
+  renderOverlaysInto(mounted.overlaysEl);
 }

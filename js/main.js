@@ -1,7 +1,7 @@
-import { store } from './state.js?v=6';
-import { renderApp, renderOverlaysOnly } from './render.js?v=6';
-import { onPhotoReady } from './photos.js?v=6';
-import { importBackupFile } from './backup.js?v=6';
+import { store } from './state.js?v=7';
+import { renderApp, renderOverlaysOnly } from './render.js?v=7';
+import { onPhotoReady } from './photos.js?v=7';
+import { importBackupFile } from './backup.js?v=7';
 
 const root = document.getElementById('app');
 
@@ -24,6 +24,12 @@ if (window.visualViewport) {
 } else {
   window.addEventListener('resize', updateViewportVars);
 }
+// Belt-and-suspenders: visualViewport's own resize event can lag or skip
+// when a keyboard dismisses on some iOS versions, which would leave the
+// sheet/wizard holding onto reserved keyboard space it no longer needs
+// (crowding their footer buttons up against the content above them).
+// Re-check shortly after any input loses focus too.
+document.addEventListener('focusout', () => setTimeout(updateViewportVars, 60));
 
 function withFocusPreserved(fn) {
   const active = document.activeElement;
@@ -47,7 +53,19 @@ function renderOverlay() { withFocusPreserved(() => renderOverlaysOnly(root)); }
 
 store.subscribe(render);
 store.subscribeOverlay(renderOverlay);
-onPhotoReady(render);
+
+// Photos load from IndexedDB one at a time; without batching, opening a
+// closet full of real photos (e.g. right after importing a backup) fired
+// one full re-render per photo as each one finished decoding — up to
+// dozens in a burst, which is exactly what made the grid look like it was
+// jumping/misaligned and made category switches feel like they caused a
+// scroll. Coalesce them into a single render per animation frame instead.
+let photoRenderQueued = false;
+onPhotoReady(() => {
+  if (photoRenderQueued) return;
+  photoRenderQueued = true;
+  requestAnimationFrame(() => { photoRenderQueued = false; render(); });
+});
 
 store.ready.then(render);
 

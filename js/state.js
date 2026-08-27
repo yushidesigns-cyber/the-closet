@@ -1,6 +1,6 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=6';
-import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=6';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=7';
+import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=7';
 
 const STATE_KEY = 'state';
 
@@ -169,18 +169,35 @@ class Store {
   // ── Fashion IQ ──
   pairKey(p) { return p[0] + ' + ' + p[1]; }
   ratedTypes() { return new Set(this.state.history.map(h => h.key)); }
-  underLearned() { const r = this.ratedTypes(); return PAIRS.filter(p => !r.has(this.pairKey(p))); }
+  underLearned() {
+    const r = this.ratedTypes();
+    // a pair-type only counts as a "blind spot" if the wardrobe can
+    // actually fill it — otherwise a permanently-empty category (e.g. no
+    // Blouse pieces yet) gets stuck forever as the only "under-learned"
+    // pair, which starves the pool and stops IQ from ever offering a card
+    // again once every fillable pair has been rated once.
+    const hasCat = c => this.state.items.some(i => i.cat === c);
+    return PAIRS.filter(p => !r.has(this.pairKey(p)) && hasCat(p[0]) && hasCat(p[1]));
+  }
   makeCard(forcePair) {
     const under = this.underLearned();
     const pool = forcePair ? [forcePair] : (under.length ? under : PAIRS);
-    const p = pool[(this.state.nonce + this.state.history.length) % pool.length];
     const n = this.state.history.length;
-    const a = this.pick([p[0]], null, this.state.mood, [], n);
-    const b = this.pick([p[1]], null, this.state.mood, a ? [a.id] : [], n + 1);
-    if (!a || !b) return null;
-    const pp = this.state.pairPrefs[this.pairKey(p)] || { love: 0, no: 0 };
-    const prediction = (pp.love >= pp.no) ? 'Love it' : 'Not for me';
-    return { key: this.pairKey(p), aId: a.id, bId: b.id, prediction, reason: under.length && !forcePair ? 'Under-learned' : 'Refining' };
+    // Try every pair-type in the pool (starting from the usual rotating
+    // index) before giving up — a wardrobe with a whole category empty
+    // (e.g. no Blouse pieces) made a fixed single attempt fail outright
+    // whenever the rotation landed on Sarees+Blouse or Blouse+Jewellery,
+    // so the card just vanished even with plenty of other pairs available.
+    for (let attempt = 0; attempt < pool.length; attempt++) {
+      const p = pool[(this.state.nonce + n + attempt) % pool.length];
+      const a = this.pick([p[0]], null, this.state.mood, [], n);
+      const b = this.pick([p[1]], null, this.state.mood, a ? [a.id] : [], n + 1);
+      if (!a || !b) continue;
+      const pp = this.state.pairPrefs[this.pairKey(p)] || { love: 0, no: 0 };
+      const prediction = (pp.love >= pp.no) ? 'Love it' : 'Not for me';
+      return { key: this.pairKey(p), aId: a.id, bId: b.id, prediction, reason: under.length && !forcePair ? 'Under-learned' : 'Refining' };
+    }
+    return null;
   }
   // mutates synchronously without notify() — meant to be called just before
   // rendering the IQ screen so the freshly-picked card is visible immediately,
@@ -252,12 +269,15 @@ class Store {
     const base = items.find(i => baseCats.includes(i.cat));
     const blouse = items.find(i => i.cat === 'Blouse');
     const shoe = items.find(i => i.cat === 'Footwear');
-    this.setOverlay({
-      wiz: {
-        step: 0, editId: e.id, vibe: e.vibe, baseId: base ? base.id : null, blouseId: blouse ? blouse.id : null,
-        shoeId: shoe ? shoe.id : null, jewelIds: items.filter(i => i.cat === 'Jewellery').map(i => i.id), name: e.name, date: e.date
-      }
-    });
+    const wiz = {
+      step: 0, editId: e.id, vibe: e.vibe, baseId: base ? base.id : null, blouseId: blouse ? blouse.id : null,
+      shoeId: shoe ? shoe.id : null, jewelIds: items.filter(i => i.cat === 'Jewellery').map(i => i.id), name: e.name, date: e.date
+    };
+    // editing opens on the review step (the last one) showing everything
+    // already chosen, rather than forcing a walk back through every step
+    // from vibe again — Back still steps backward through the same choices.
+    wiz.step = this.wizSteps(wiz).length - 1;
+    this.setOverlay({ wiz });
   }
   wizSave() {
     const w = this.state.wiz;

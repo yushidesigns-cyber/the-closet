@@ -1,7 +1,7 @@
-import { store } from './state.js?v=4';
-import { renderApp } from './render.js?v=4';
-import { onPhotoReady } from './photos.js?v=4';
-import { importBackupFile } from './backup.js?v=4';
+import { store } from './state.js?v=5';
+import { renderApp, renderOverlaysOnly } from './render.js?v=5';
+import { onPhotoReady } from './photos.js?v=5';
+import { importBackupFile } from './backup.js?v=5';
 
 const root = document.getElementById('app');
 
@@ -15,9 +15,7 @@ const root = document.getElementById('app');
 function updateViewportVars() {
   const vv = window.visualViewport;
   const height = vv ? vv.height : window.innerHeight;
-  const top = vv ? vv.offsetTop : 0;
   document.documentElement.style.setProperty('--vvh', height + 'px');
-  document.documentElement.style.setProperty('--vv-top', top + 'px');
 }
 updateViewportVars();
 if (window.visualViewport) {
@@ -45,8 +43,10 @@ function withFocusPreserved(fn) {
 }
 
 function render() { withFocusPreserved(() => renderApp(root)); }
+function renderOverlay() { withFocusPreserved(() => renderOverlaysOnly(root)); }
 
 store.subscribe(render);
+store.subscribeOverlay(renderOverlay);
 onPhotoReady(render);
 
 store.ready.then(render);

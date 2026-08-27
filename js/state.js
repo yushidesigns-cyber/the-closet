@@ -1,6 +1,6 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=4';
-import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=4';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=5';
+import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=5';
 
 const STATE_KEY = 'state';
 
@@ -38,6 +38,7 @@ class Store {
   constructor() {
     this.state = freshState();
     this.subs = new Set();
+    this.overlaySubs = new Set();
     this.timers = [];
     this._saveTimer = null;
     this.ready = this._load();
@@ -51,12 +52,19 @@ class Store {
   }
 
   subscribe(fn) { this.subs.add(fn); return () => this.subs.delete(fn); }
+  // "overlay" subscribers re-render only the sheet/wizard/toast layer, not
+  // the screen behind it — used for interactions scoped entirely to an open
+  // sheet or wizard (picking a category, a mood, a wizard option, stepping
+  // forward/back) so they never rebuild the closet grid behind them.
+  subscribeOverlay(fn) { this.overlaySubs.add(fn); return () => this.overlaySubs.delete(fn); }
   notify() { this.subs.forEach(fn => fn()); this._schedulePersist(); }
+  notifyOverlay() { this.overlaySubs.forEach(fn => fn()); }
   // mutate state without triggering a re-render — for text fields with no
   // on-screen dependents, so typing doesn't rebuild the whole app (and its
   // photo grid) on every keystroke, which is what caused the visible
   // scroll/shake behind the keyboard.
   mutate(fn) { fn(this.state); }
+  setOverlay(patch) { Object.assign(this.state, patch); this.notifyOverlay(); }
   _schedulePersist() {
     if (this._saveTimer) clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => {
@@ -226,7 +234,7 @@ class Store {
     steps.push({ k: 'footwear', t: 'Choose footwear' }, { k: 'jewellery', t: 'Choose jewellery' }, { k: 'details', t: 'Name and date it' }, { k: 'review', t: 'Review' });
     return steps;
   }
-  wizStart() { const d = new Date(); d.setDate(d.getDate() + 14); this.set({ wiz: { step: 0, vibe: null, baseId: null, blouseId: null, shoeId: null, jewelIds: [], name: '', date: d.toISOString().slice(0, 10) } }); }
+  wizStart() { const d = new Date(); d.setDate(d.getDate() + 14); this.setOverlay({ wiz: { step: 0, vibe: null, baseId: null, blouseId: null, shoeId: null, jewelIds: [], name: '', date: d.toISOString().slice(0, 10) } }); }
   wizNext() {
     const w = this.state.wiz; if (!w) return;
     const steps = this.wizSteps(w);
@@ -235,16 +243,16 @@ class Store {
     if (cur.k === 'base' && !w.baseId) return this.flash('Pick the base piece.');
     if (cur.k === 'review') return this.wizSave();
     if (cur.k === 'details' && !w.name.trim()) return this.flash('Give the event a name.');
-    this.set({ wiz: { ...w, step: Math.min(steps.length - 1, w.step + 1) } });
+    this.setOverlay({ wiz: { ...w, step: Math.min(steps.length - 1, w.step + 1) } });
   }
-  wizBack() { const w = this.state.wiz; if (!w) return; if (w.step === 0) return this.set({ wiz: null }); this.set({ wiz: { ...w, step: w.step - 1 } }); }
+  wizBack() { const w = this.state.wiz; if (!w) return; if (w.step === 0) return this.setOverlay({ wiz: null }); this.setOverlay({ wiz: { ...w, step: w.step - 1 } }); }
   editEvent(e) {
     const items = e.itemIds.map(id => this.byId(id)).filter(Boolean);
     const baseCats = ['Sarees', 'Lehenga', 'Dresses', 'Suits', 'Jumpsuit', 'Tops'];
     const base = items.find(i => baseCats.includes(i.cat));
     const blouse = items.find(i => i.cat === 'Blouse');
     const shoe = items.find(i => i.cat === 'Footwear');
-    this.set({
+    this.setOverlay({
       wiz: {
         step: 0, editId: e.id, vibe: e.vibe, baseId: base ? base.id : null, blouseId: blouse ? blouse.id : null,
         shoeId: shoe ? shoe.id : null, jewelIds: items.filter(i => i.cat === 'Jewellery').map(i => i.id), name: e.name, date: e.date
@@ -269,21 +277,21 @@ class Store {
   }
   wizSelect(kind, id) {
     const w = this.state.wiz;
-    if (kind === 'jewellery') { const has = w.jewelIds.includes(id); this.set({ wiz: { ...w, jewelIds: has ? w.jewelIds.filter(x => x !== id) : w.jewelIds.concat([id]) } }); return; }
+    if (kind === 'jewellery') { const has = w.jewelIds.includes(id); this.setOverlay({ wiz: { ...w, jewelIds: has ? w.jewelIds.filter(x => x !== id) : w.jewelIds.concat([id]) } }); return; }
     const map = { base: 'baseId', blouse: 'blouseId', footwear: 'shoeId' };
     this.state.wiz = { ...w, [map[kind]]: w[map[kind]] === id ? null : id };
-    this.notify();
+    this.notifyOverlay();
     this.wizNextSoft();
   }
-  wizNextSoft() { const w = this.state.wiz; if (!w) return; const steps = this.wizSteps(w); if (steps[w.step].k !== 'review') this.set({ wiz: { ...this.state.wiz, step: Math.min(steps.length - 1, w.step + 1) } }); }
+  wizNextSoft() { const w = this.state.wiz; if (!w) return; const steps = this.wizSteps(w); if (steps[w.step].k !== 'review') this.setOverlay({ wiz: { ...this.state.wiz, step: Math.min(steps.length - 1, w.step + 1) } }); }
 
   // ── sheet (add/edit piece) ──
-  openAdd() { this.set({ sheet: { name: '', cat: 'Sarees', sub: null, moods: [], jtype: null, photoId: null, photoPreviewUrl: null, pendingBlob: null } }); }
-  openEdit(it) { this.set({ sheet: { id: it.id, name: it.name, cat: it.cat, sub: it.sub, moods: it.moods.slice(), jtype: it.jtype, photoId: it.photoId || null, photoPreviewUrl: null, pendingBlob: null } }); }
+  openAdd() { this.setOverlay({ sheet: { name: '', cat: 'Sarees', sub: null, moods: [], jtype: null, photoId: null, photoPreviewUrl: null, pendingBlob: null } }); }
+  openEdit(it) { this.setOverlay({ sheet: { id: it.id, name: it.name, cat: it.cat, sub: it.sub, moods: it.moods.slice(), jtype: it.jtype, photoId: it.photoId || null, photoPreviewUrl: null, pendingBlob: null } }); }
   setSheetPendingPhoto(blob, previewUrl) {
     const sh = this.state.sheet; if (!sh) return;
     if (sh.photoPreviewUrl) URL.revokeObjectURL(sh.photoPreviewUrl);
-    this.set({ sheet: { ...sh, pendingBlob: blob, photoPreviewUrl: previewUrl } });
+    this.setOverlay({ sheet: { ...sh, pendingBlob: blob, photoPreviewUrl: previewUrl } });
   }
   async saveSheet() {
     const sh = this.state.sheet;

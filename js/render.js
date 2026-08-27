@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=4';
-import { store } from './state.js?v=4';
-import { getPhotoUrl } from './photos.js?v=4';
-import { exportBackup } from './backup.js?v=4';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS } from './constants.js?v=4';
-import * as icon from './icons.js?v=4';
+import { h, clear } from './dom.js?v=5';
+import { store } from './state.js?v=5';
+import { getPhotoUrl } from './photos.js?v=5';
+import { exportBackup } from './backup.js?v=5';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, APP_VERSION } from './constants.js?v=5';
+import * as icon from './icons.js?v=5';
 
 const ac = () => store.accent();
 
@@ -129,7 +129,8 @@ function screenCloset() {
   const wrap = h('div');
   const pad = h('div', { class: 'screen-pad' });
   pad.appendChild(h('div', { class: 'title-serif', style: { fontSize: '42px', textTransform: 'uppercase' } }, 'The Closet'));
-  pad.appendChild(h('div', { class: 'eyebrow', style: { marginTop: '8px' } },
+  pad.appendChild(h('div', { style: { marginTop: '8px', fontSize: '9px', letterSpacing: '0.1em', color: ac(), fontFamily: 'monospace' } }, 'build ' + APP_VERSION));
+  pad.appendChild(h('div', { class: 'eyebrow', style: { marginTop: '4px' } },
     list.length + ' of ' + s.items.length + ' pieces' + (s.cat === 'All' ? '' : ' · ' + s.cat)));
   pad.appendChild(h('div', { class: 'search-field', style: { marginTop: '16px' } }, [
     icon.iconSearch(),
@@ -438,11 +439,11 @@ function renderSheet() {
   if (!s.sheet) return null;
   const sh = s.sheet;
   const overlay = h('div', { class: 'sheet-overlay' });
-  overlay.appendChild(h('div', { class: 'sheet-scrim', onclick: () => store.set({ sheet: null }) }));
+  overlay.appendChild(h('div', { class: 'sheet-scrim', onclick: () => store.setOverlay({ sheet: null }) }));
   const sheet = h('div', { class: 'sheet' });
   sheet.appendChild(h('div', { class: 'sheet-head' }, [
     h('div', { class: 'sheet-title' }, sh.id ? 'Edit piece' : 'Add a piece'),
-    h('button', { class: 'btn btn-ghost', style: { minHeight: '36px', padding: '0 6px', minWidth: 0, fontSize: '10px', letterSpacing: '0.14em' }, onclick: () => store.set({ sheet: null }) }, 'Cancel')
+    h('button', { class: 'btn btn-ghost', style: { minHeight: '36px', padding: '0 6px', minWidth: 0, fontSize: '10px', letterSpacing: '0.14em' }, onclick: () => store.setOverlay({ sheet: null }) }, 'Cancel')
   ]));
 
   const photoRow = h('div', { class: 'photo-row' });
@@ -466,22 +467,22 @@ function renderSheet() {
   sheet.appendChild(textField({ value: sh.name, placeholder: 'Ivory Kanjivaram', focusKey: 'sheet-name', onInput: v => store.mutate(st => { st.sheet.name = v; }) }));
 
   sheet.appendChild(h('div', { class: 'sheet-field-label' }, 'Category'));
-  sheet.appendChild(h('div', { class: 'sheet-chip-row' }, store.allCats().map(c => h('button', { class: 'sheet-chip' + (sh.cat === c ? ' active' : ''), onclick: () => store.set({ sheet: { ...store.state.sheet, cat: c, sub: null, jtype: null } }) }, c))));
+  sheet.appendChild(h('div', { class: 'sheet-chip-row' }, store.allCats().map(c => h('button', { class: 'sheet-chip' + (sh.cat === c ? ' active' : ''), onclick: () => store.setOverlay({ sheet: { ...store.state.sheet, cat: c, sub: null, jtype: null } }) }, c))));
 
   const sheetSubList = sh.cat === 'Jewellery' ? JTYPES : (s.subs[sh.cat] || []);
   if (sh.cat !== 'Jewellery' && sheetSubList.length) {
     sheet.appendChild(h('div', { class: 'sheet-field-label' }, 'Subcategory'));
-    sheet.appendChild(h('div', { class: 'sheet-chip-row' }, sheetSubList.map(x => h('button', { class: 'sheet-chip' + (sh.sub === x ? ' active' : ''), onclick: () => store.set({ sheet: { ...store.state.sheet, sub: store.state.sheet.sub === x ? null : x } }) }, x))));
+    sheet.appendChild(h('div', { class: 'sheet-chip-row' }, sheetSubList.map(x => h('button', { class: 'sheet-chip' + (sh.sub === x ? ' active' : ''), onclick: () => store.setOverlay({ sheet: { ...store.state.sheet, sub: store.state.sheet.sub === x ? null : x } }) }, x))));
   }
   if (sh.cat === 'Jewellery') {
     sheet.appendChild(h('div', { class: 'sheet-field-label' }, 'Jewellery type'));
-    sheet.appendChild(h('div', { class: 'sheet-chip-row' }, JTYPES.map(x => h('button', { class: 'sheet-chip' + (sh.jtype === x ? ' active' : ''), onclick: () => store.set({ sheet: { ...store.state.sheet, jtype: store.state.sheet.jtype === x ? null : x } }) }, x))));
+    sheet.appendChild(h('div', { class: 'sheet-chip-row' }, JTYPES.map(x => h('button', { class: 'sheet-chip' + (sh.jtype === x ? ' active' : ''), onclick: () => store.setOverlay({ sheet: { ...store.state.sheet, jtype: store.state.sheet.jtype === x ? null : x } }) }, x))));
   }
 
   sheet.appendChild(h('div', { class: 'sheet-field-label' }, 'Mood & occasion'));
   sheet.appendChild(h('div', { class: 'sheet-chip-row' }, BASE_MOODS.concat(s.tags).map(m => {
     const has = sh.moods.includes(m);
-    return h('button', { class: 'sheet-chip' + (has ? ' active' : ''), onclick: () => { const cur = store.state.sheet; const nowHas = cur.moods.includes(m); store.set({ sheet: { ...cur, moods: nowHas ? cur.moods.filter(x => x !== m) : cur.moods.concat([m]) } }); } }, m);
+    return h('button', { class: 'sheet-chip' + (has ? ' active' : ''), onclick: () => { const cur = store.state.sheet; const nowHas = cur.moods.includes(m); store.setOverlay({ sheet: { ...cur, moods: nowHas ? cur.moods.filter(x => x !== m) : cur.moods.concat([m]) } }); } }, m);
   })));
 
   sheet.appendChild(h('button', { class: 'btn btn-primary btn-block', style: { marginTop: '20px', letterSpacing: '0.18em' }, onclick: () => store.saveSheet() }, sh.id ? 'Save changes' : 'Save to closet'));
@@ -503,7 +504,7 @@ function renderWizard() {
   const head = h('div', { class: 'wiz-head' });
   head.appendChild(h('div', { class: 'wiz-head-row' }, [
     h('div', { class: 'eyebrow' }, 'Step ' + (w.step + 1) + ' of ' + steps.length),
-    h('button', { class: 'btn btn-ghost', style: { minHeight: '36px', padding: '0 6px', minWidth: 0, fontSize: '10px', letterSpacing: '0.14em' }, onclick: () => store.set({ wiz: null }) }, 'Close')
+    h('button', { class: 'btn btn-ghost', style: { minHeight: '36px', padding: '0 6px', minWidth: 0, fontSize: '10px', letterSpacing: '0.14em' }, onclick: () => store.setOverlay({ wiz: null }) }, 'Close')
   ]));
   head.appendChild(h('div', { class: 'wiz-title' }, curStep.t));
   head.appendChild(h('div', { class: 'wiz-dots' }, steps.map((x, i) => h('div', { class: 'wiz-dot' + (i <= w.step ? ' active' : '') }))));
@@ -535,7 +536,7 @@ function renderWizard() {
     BASE_MOODS.concat(s.tags).forEach(v => {
       const sel = w.vibe === v;
       const note = v === 'Ethnic' ? 'Sarees, lehengas, kurta sets' : (v === 'Work' ? 'Suits and separates' : (v === 'Dressy' ? 'Evening and occasion' : 'Everyday'));
-      list.appendChild(h('button', { class: 'wiz-vibe' + (sel ? ' selected' : ''), onclick: () => { store.set({ wiz: { ...store.state.wiz, vibe: v } }); store.wizNextSoft(); } }, [
+      list.appendChild(h('button', { class: 'wiz-vibe' + (sel ? ' selected' : ''), onclick: () => { store.setOverlay({ wiz: { ...store.state.wiz, vibe: v } }); store.wizNextSoft(); } }, [
         h('div', {}, [h('div', { class: 'wiz-vibe-label' }, v), h('div', { class: 'wiz-vibe-note' }, note)]),
         h('div', { style: { fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', color: ac() } }, sel ? 'Chosen' : '')
       ]));
@@ -545,7 +546,7 @@ function renderWizard() {
     body.appendChild(h('div', { class: 'sheet-field-label' }, 'Event name'));
     body.appendChild(textField({ value: w.name, placeholder: "Anjali's mehndi", focusKey: 'wiz-name', onInput: v => store.mutate(st => { st.wiz.name = v; }) }));
     body.appendChild(h('div', { class: 'sheet-field-label' }, 'Date'));
-    body.appendChild(textField({ type: 'date', value: w.date, focusKey: 'wiz-date', onInput: v => store.set({ wiz: { ...store.state.wiz, date: v } }) }));
+    body.appendChild(textField({ type: 'date', value: w.date, focusKey: 'wiz-date', onInput: v => store.setOverlay({ wiz: { ...store.state.wiz, date: v } }) }));
   } else if (curStep.k === 'review') {
     const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
     body.appendChild(h('div', { class: 'wiz-review-name' }, w.name.trim() || 'Untitled event'));
@@ -578,8 +579,8 @@ function renderToast() {
     h('div', { class: 'toast-dot' }),
     h('div', { class: 'toast-msg' }, s.toast)
   ]);
-  if (s.undoFn) t.appendChild(h('button', { class: 'toast-undo', onclick: () => { const f = store.state.undoFn; store.set({ toast: '', undoFn: null }); if (f) f(); } }, 'Undo'));
-  t.appendChild(h('button', { class: 'toast-close', onclick: () => store.set({ toast: '', undoFn: null }) }, icon.iconClose()));
+  if (s.undoFn) t.appendChild(h('button', { class: 'toast-undo', onclick: () => { const f = store.state.undoFn; store.setOverlay({ toast: '', undoFn: null }); if (f) f(); } }, 'Undo'));
+  t.appendChild(h('button', { class: 'toast-close', onclick: () => store.setOverlay({ toast: '', undoFn: null }) }, icon.iconClose()));
   return t;
 }
 
@@ -592,6 +593,26 @@ function navButtons(activeKey) {
     btn_.appendChild(h('span', {}, n.label));
     return btn_;
   });
+}
+
+// kept so overlay-only updates (picking a category in the sheet, stepping
+// the wizard, dismissing the toast) can rebuild just the overlay layer
+// without touching the screen behind it (e.g. an 85-photo closet grid).
+let mountedOverlaysEl = null;
+
+function renderOverlaysInto(container) {
+  clear(container);
+  const sheetEl = renderSheet();
+  if (sheetEl) container.appendChild(sheetEl);
+  const wizEl = renderWizard();
+  if (wizEl) container.appendChild(wizEl);
+  const toastEl = renderToast();
+  if (toastEl) container.appendChild(toastEl);
+}
+
+export function renderOverlaysOnly(root) {
+  if (!mountedOverlaysEl) { renderApp(root); return; }
+  renderOverlaysInto(mountedOverlaysEl);
 }
 
 export function renderApp(root) {
@@ -620,12 +641,10 @@ export function renderApp(root) {
   const bottomNav = h('div', { class: 'bottom-nav' }, h('div', { class: 'nav-row' }, navButtons(s.screen)));
   screenArea.appendChild(bottomNav);
 
-  const sheetEl = renderSheet();
-  if (sheetEl) screenArea.appendChild(sheetEl);
-  const wizEl = renderWizard();
-  if (wizEl) screenArea.appendChild(wizEl);
-  const toastEl = renderToast();
-  if (toastEl) screenArea.appendChild(toastEl);
+  const overlaysEl = h('div', { class: 'overlays-root' });
+  screenArea.appendChild(overlaysEl);
+  renderOverlaysInto(overlaysEl);
+  mountedOverlaysEl = overlaysEl;
 
   shell.appendChild(screenArea);
   frame.appendChild(shell);

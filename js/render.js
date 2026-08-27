@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=3';
-import { store } from './state.js?v=3';
-import { getPhotoUrl } from './photos.js?v=3';
-import { exportBackup } from './backup.js?v=3';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS } from './constants.js?v=3';
-import * as icon from './icons.js?v=3';
+import { h, clear } from './dom.js?v=4';
+import { store } from './state.js?v=4';
+import { getPhotoUrl } from './photos.js?v=4';
+import { exportBackup } from './backup.js?v=4';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS } from './constants.js?v=4';
+import * as icon from './icons.js?v=4';
 
 const ac = () => store.accent();
 

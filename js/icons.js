@@ -1,4 +1,4 @@
-import { svg } from './dom.js?v=3';
+import { svg } from './dom.js?v=4';
 
 const wrap = (w, h_, viewBox, inner, stroke = 'currentColor', strokeWidth = 1.5, fill = 'none') =>
   `<svg width="${w}" height="${h_}" viewBox="${viewBox}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}">${inner}</svg>`;

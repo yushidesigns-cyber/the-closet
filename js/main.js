@@ -1,9 +1,31 @@
-import { store } from './state.js?v=3';
-import { renderApp } from './render.js?v=3';
-import { onPhotoReady } from './photos.js?v=3';
-import { importBackupFile } from './backup.js?v=3';
+import { store } from './state.js?v=4';
+import { renderApp } from './render.js?v=4';
+import { onPhotoReady } from './photos.js?v=4';
+import { importBackupFile } from './backup.js?v=4';
 
 const root = document.getElementById('app');
+
+// Keep fixed-position overlays (sheet, wizard) sized to the actual visible
+// area instead of the full layout viewport. iOS Safari doesn't shrink
+// window.innerHeight/100vh when the keyboard opens, so a fixed overlay
+// bottom-anchored with plain inset:0/100vh ends up positioned as if the
+// keyboard weren't there — then the browser's own "scroll focused input
+// into view" heuristic repeatedly fights to compensate on every keystroke,
+// which is what made the page appear to drift/shake while typing.
+function updateViewportVars() {
+  const vv = window.visualViewport;
+  const height = vv ? vv.height : window.innerHeight;
+  const top = vv ? vv.offsetTop : 0;
+  document.documentElement.style.setProperty('--vvh', height + 'px');
+  document.documentElement.style.setProperty('--vv-top', top + 'px');
+}
+updateViewportVars();
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', updateViewportVars);
+  window.visualViewport.addEventListener('scroll', updateViewportVars);
+} else {
+  window.addEventListener('resize', updateViewportVars);
+}
 
 function withFocusPreserved(fn) {
   const active = document.activeElement;

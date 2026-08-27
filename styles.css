@@ -207,9 +207,9 @@ img{max-width:100%;display:block}
 .deleted-name{flex:1;min-width:0;font-size:12px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ============ bottom sheet ============ */
-.sheet-overlay{position:fixed;inset:0;z-index:60;background:rgba(22,21,15,0.42);animation:fadeIn 160ms ease both;display:flex;flex-direction:column;justify-content:flex-end}
+.sheet-overlay{position:fixed;left:0;right:0;top:var(--vv-top,0px);height:var(--vvh,100dvh);z-index:60;background:rgba(22,21,15,0.42);animation:fadeIn 160ms ease both;display:flex;flex-direction:column;justify-content:flex-end}
 .sheet-overlay .sheet-scrim{flex:1}
-.sheet{background:var(--app-bg);max-height:86vh;overflow-y:auto;animation:sheetUp 260ms cubic-bezier(.2,.8,.25,1) both;padding:18px 20px calc(30px + var(--safe-bottom));width:100%;max-width:640px;margin:0 auto}
+.sheet{background:var(--app-bg);max-height:min(86vh,calc(var(--vvh,100dvh) - 20px));overflow-y:auto;animation:sheetUp 260ms cubic-bezier(.2,.8,.25,1) both;padding:18px 20px calc(30px + var(--safe-bottom));width:100%;max-width:640px;margin:0 auto}
 .sheet-head{display:flex;align-items:baseline;justify-content:space-between}
 .sheet-title{font-family:var(--font-serif);font-size:26px;color:var(--ink)}
 .sheet-field-label{margin-top:16px;font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted)}
@@ -224,7 +224,7 @@ img{max-width:100%;display:block}
 .photo-hint{font-size:10px;line-height:1.5;color:var(--muted)}
 
 /* ============ wizard ============ */
-.wizard{position:fixed;inset:0;z-index:70;background:var(--app-bg);animation:fadeIn 140ms ease both;display:flex;flex-direction:column}
+.wizard{position:fixed;left:0;right:0;top:var(--vv-top,0px);height:var(--vvh,100dvh);z-index:70;background:var(--app-bg);animation:fadeIn 140ms ease both;display:flex;flex-direction:column}
 .wizard-inner{width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;height:100%}
 .wiz-head{flex:none;padding:calc(20px + var(--safe-top)) 20px 12px;border-bottom:1px solid var(--line)}
 .wiz-head-row{display:flex;align-items:center;justify-content:space-between;gap:10px}

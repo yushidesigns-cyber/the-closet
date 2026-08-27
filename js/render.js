@@ -137,13 +137,16 @@ function screenCloset() {
   ]));
   wrap.appendChild(pad);
 
-  wrap.appendChild(h('div', { class: 'chip-row', style: { marginTop: '14px', padding: '2px 20px' } },
+  // pinned as one block so filters never scroll up under the status bar/notch
+  const filters = h('div', { class: 'closet-filters-sticky' });
+
+  filters.appendChild(h('div', { class: 'chip-row', style: { padding: '2px 20px' } },
     closetHeaderCats().map(c => chip(c, s.cat === c, () => store.set({ cat: c, sub: null })))));
 
   const hasSubs = s.cat !== 'All' && (s.subs[s.cat] || s.cat === 'Jewellery');
   if (hasSubs) {
     const subList = s.cat === 'Jewellery' ? JTYPES : (s.subs[s.cat] || []);
-    wrap.appendChild(h('div', { class: 'underline-rail', style: { marginTop: '6px', padding: '2px 20px' } },
+    filters.appendChild(h('div', { class: 'underline-rail', style: { marginTop: '6px', padding: '2px 20px' } },
       subList.map(x => h('button', { class: 'underline-chip' + (s.sub === x ? ' active' : ''), style: s.sub === x ? { borderColor: ac() } : {}, onclick: () => store.set({ sub: s.sub === x ? null : x }) }, x))));
   }
 
@@ -155,10 +158,12 @@ function screenCloset() {
     h('button', { class: 'btn-icon', style: { width: '34px', height: '32px', border: 'none', background: s.closetView === 'grid' ? '#16150F' : 'transparent', color: s.closetView === 'grid' ? '#F6F4EF' : '#6B665B' }, title: 'Editorial 2-up', onclick: () => store.set({ closetView: 'grid' }) }, icon.iconGrid()),
     h('button', { class: 'btn-icon', style: { width: '34px', height: '32px', border: 'none', borderLeft: '1px solid rgba(22,21,15,0.14)', background: s.closetView === 'feed' ? '#16150F' : 'transparent', color: s.closetView === 'feed' ? '#F6F4EF' : '#6B665B' }, title: 'Full-bleed feed', onclick: () => store.set({ closetView: 'feed' }) }, icon.iconFeed())
   ]));
-  wrap.appendChild(sortRow);
+  filters.appendChild(sortRow);
 
-  wrap.appendChild(h('div', { class: 'chip-row', style: { marginTop: '10px', padding: '0 20px' } },
+  filters.appendChild(h('div', { class: 'chip-row', style: { marginTop: '10px', padding: '0 20px' } },
     BASE_MOODS.concat(s.tags).map(m => chip(m, s.moodFilter === m, () => store.set({ moodFilter: s.moodFilter === m ? null : m })))));
+
+  wrap.appendChild(filters);
 
   if (s.items.length === 0) {
     wrap.appendChild(emptyBox('Your closet is empty.', 'Tap "Add piece" to photograph and tag your first item.'));

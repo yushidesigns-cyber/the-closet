@@ -41,7 +41,7 @@ img{max-width:100%;display:block}
 .shell{
   flex:1;display:flex;flex-direction:column;background:var(--app-bg);
   width:100%;max-width:640px;margin:0 auto;position:relative;
-  min-height:100vh;
+  height:100vh;height:100dvh;
 }
 .screen{flex:1;min-height:0;overflow-y:auto;padding:calc(20px + var(--safe-top)) 0 140px}
 .screen-pad{padding-left:20px;padding-right:20px}
@@ -51,7 +51,7 @@ img{max-width:100%;display:block}
   .app-frame{display:flex;min-height:100vh;justify-content:center;align-items:flex-start;padding:32px}
   .shell{
     max-width:920px;border:1px solid var(--line);background:var(--app-bg);
-    min-height:calc(100vh - 64px);box-shadow:0 30px 60px rgba(22,21,15,0.12);
+    height:calc(100vh - 64px);height:calc(100dvh - 64px);box-shadow:0 30px 60px rgba(22,21,15,0.12);
     flex-direction:row;
   }
   .shell.has-side-nav .screen-area{flex:1;min-width:0}
@@ -116,6 +116,10 @@ img{max-width:100%;display:block}
 .search-field{display:flex;align-items:center;gap:9px;border:1px solid var(--line-strong);padding:0 13px;height:46px;background:var(--card-bg)}
 .search-field input{flex:1;min-width:0;border:none;background:transparent;font-size:13px;color:var(--ink)}
 
+/* pinned below the safe-area notch so filters never scroll up behind the
+   status bar/dynamic island on a fullscreen mobile viewport */
+.closet-filters-sticky{position:sticky;top:var(--safe-top);z-index:20;background:var(--app-bg);padding-top:10px;padding-bottom:2px;margin-top:4px}
+
 /* ============ wardrobe card ============ */
 .thumb{position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#DEDAD1}
 .thumb img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
@@ -123,7 +127,7 @@ img{max-width:100%;display:block}
 .fav-btn{position:absolute;top:0;right:0;width:40px;height:40px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;z-index:2}
 .wear-badge{position:absolute;bottom:0;left:0;background:var(--ink);color:#F6F4EF;font-size:8.5px;letter-spacing:0.1em;padding:3px 6px;z-index:1}
 
-.closet-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.closet-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:start}
 .wcard{border:1px solid var(--line-soft);background:var(--card-bg)}
 .wcard .thumb{aspect-ratio:3/4}
 .wcard .wcard-body{padding:9px 9px 7px}
@@ -229,7 +233,7 @@ img{max-width:100%;display:block}
 .wiz-dot{flex:1;height:3px;background:var(--line)}
 .wiz-dot.active{background:var(--ink)}
 .wiz-body{flex:1;overflow-y:auto;padding:16px 20px 20px}
-.wiz-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.wiz-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:start}
 @media (min-width:640px){ .wiz-grid{grid-template-columns:repeat(3,1fr)} }
 .wiz-option{text-align:left;padding:0;cursor:pointer;background:var(--card-bg);border:1.5px solid var(--line-soft)}
 .wiz-option.selected{border-color:var(--ink)}

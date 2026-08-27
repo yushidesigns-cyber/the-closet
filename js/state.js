@@ -1,6 +1,6 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=10';
-import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=10';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=11';
+import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=11';
 
 const STATE_KEY = 'state';
 
@@ -167,7 +167,13 @@ class Store {
   }
 
   // ── Fashion IQ ──
+  // a "side" is either a plain category ('Tops') or a specific jewellery
+  // subtype ('Jewellery:Earrings') so pairs can distinguish earrings from a
+  // necklace instead of treating all jewellery as one interchangeable blob.
+  sideParts(s) { const i = s.indexOf(':'); return i < 0 ? { cat: s, jtype: null } : { cat: s.slice(0, i), jtype: s.slice(i + 1) }; }
+  sideLabel(s) { const { cat, jtype } = this.sideParts(s); return jtype || cat; }
   pairKey(p) { return p[0] + ' + ' + p[1]; }
+  pairLabel(p) { return this.sideLabel(p[0]) + ' + ' + this.sideLabel(p[1]); }
   ratedTypes() { return new Set(this.state.history.map(h => h.key)); }
   underLearned() {
     const r = this.ratedTypes();
@@ -176,8 +182,8 @@ class Store {
     // Blouse pieces yet) gets stuck forever as the only "under-learned"
     // pair, which starves the pool and stops IQ from ever offering a card
     // again once every fillable pair has been rated once.
-    const hasCat = c => this.state.items.some(i => i.cat === c);
-    return PAIRS.filter(p => !r.has(this.pairKey(p)) && hasCat(p[0]) && hasCat(p[1]));
+    const hasSide = s => { const { cat, jtype } = this.sideParts(s); return this.state.items.some(i => i.cat === cat && (!jtype || i.jtype === jtype)); };
+    return PAIRS.filter(p => !r.has(this.pairKey(p)) && hasSide(p[0]) && hasSide(p[1]));
   }
   makeCard(forcePair) {
     const under = this.underLearned();
@@ -190,12 +196,13 @@ class Store {
     // so the card just vanished even with plenty of other pairs available.
     for (let attempt = 0; attempt < pool.length; attempt++) {
       const p = pool[(this.state.nonce + n + attempt) % pool.length];
-      const a = this.pick([p[0]], null, this.state.mood, [], n);
-      const b = this.pick([p[1]], null, this.state.mood, a ? [a.id] : [], n + 1);
+      const pa = this.sideParts(p[0]), pb = this.sideParts(p[1]);
+      const a = this.pick([pa.cat], pa.jtype, this.state.mood, [], n);
+      const b = this.pick([pb.cat], pb.jtype, this.state.mood, a ? [a.id] : [], n + 1);
       if (!a || !b) continue;
       const pp = this.state.pairPrefs[this.pairKey(p)] || { love: 0, no: 0 };
       const prediction = (pp.love >= pp.no) ? 'Love it' : 'Not for me';
-      return { key: this.pairKey(p), aId: a.id, bId: b.id, prediction, reason: under.length && !forcePair ? 'Under-learned' : 'Refining' };
+      return { key: this.pairKey(p), label: this.pairLabel(p), aId: a.id, bId: b.id, prediction, reason: under.length && !forcePair ? 'Under-learned' : 'Refining' };
     }
     return null;
   }

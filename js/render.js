@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=10';
-import { store } from './state.js?v=10';
-import { getPhotoUrl } from './photos.js?v=10';
-import { exportBackup } from './backup.js?v=10';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, APP_VERSION } from './constants.js?v=10';
-import * as icon from './icons.js?v=10';
+import { h, clear } from './dom.js?v=11';
+import { store } from './state.js?v=11';
+import { getPhotoUrl } from './photos.js?v=11';
+import { exportBackup } from './backup.js?v=11';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, APP_VERSION } from './constants.js?v=11';
+import * as icon from './icons.js?v=11';
 
 const ac = () => store.accent();
 
@@ -258,7 +258,7 @@ function screenIQ() {
     const a = store.byId(card.aId), b = store.byId(card.bId);
     const c = h('div', { class: 'iq-card' });
     c.appendChild(h('div', { style: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' } }, [
-      h('div', { style: { fontSize: '9px', letterSpacing: '0.16em', textTransform: 'uppercase', color: '#16150F' } }, card.key),
+      h('div', { style: { fontSize: '9px', letterSpacing: '0.16em', textTransform: 'uppercase', color: '#16150F' } }, card.label),
       h('div', { style: { fontSize: '9px', letterSpacing: '0.12em', textTransform: 'uppercase', color: ac() } }, card.reason)
     ]));
     c.appendChild(h('div', { class: 'iq-pair' }, [a, b].map(it => h('div', { class: 'iq-pair-item' }, [thumb(it), h('div', { class: 'iq-pair-name' }, it ? it.name : '')]))));
@@ -278,7 +278,7 @@ function screenIQ() {
     b.appendChild(eyebrow('Blind spots'));
     b.appendChild(h('div', { style: { marginTop: '4px', fontSize: '11.5px', lineHeight: '1.6', color: '#6B665B' } }, under.length + ' of ' + PAIRS.length + ' combination types are unrated. Rating these teaches IQ more than another everyday pair.'));
     b.appendChild(h('div', { style: { marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px' } },
-      under.slice(0, 6).map(p => h('button', { class: 'blind-chip', onclick: () => store.set({ focusPair: p, iqCard: null }) }, store.pairKey(p)))));
+      under.slice(0, 6).map(p => h('button', { class: 'blind-chip', onclick: () => store.set({ focusPair: p, iqCard: null }) }, store.pairLabel(p)))));
     wrap.appendChild(b);
   }
 

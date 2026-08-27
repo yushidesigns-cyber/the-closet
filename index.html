@@ -3,12 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- the CSS/JS files carry ?v= cache-busting query strings, but this
+     document itself has no version in its URL — if a browser (or iOS
+     Safari's tab-suspend/back-forward cache) serves a stale copy of THIS
+     file, it'll keep pointing at old ?v=N asset links forever. Ask
+     intermediate caches not to hold onto it. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>The Closet</title>
 <meta name="theme-color" content="#EFEDE7">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=9">
+<link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
 <div id="app" role="application" aria-label="The Closet"></div>
@@ -18,6 +26,6 @@
 <input type="file" id="photo-capture" accept="image/*" capture="environment" style="display:none">
 <input type="file" id="backup-import" accept="application/json" style="display:none">
 
-<script type="module" src="js/main.js?v=9"></script>
+<script type="module" src="js/main.js?v=10"></script>
 </body>
 </html>

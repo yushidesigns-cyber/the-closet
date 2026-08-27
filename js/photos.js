@@ -1,4 +1,4 @@
-import { photoGet } from './db.js?v=5';
+import { photoGet } from './db.js?v=6';
 
 const urlCache = new Map(); // photoId -> objectURL
 const pending = new Set();

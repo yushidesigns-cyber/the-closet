@@ -1,6 +1,6 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=2';
-import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=2';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=3';
+import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=3';
 
 const STATE_KEY = 'state';
 
@@ -52,6 +52,11 @@ class Store {
 
   subscribe(fn) { this.subs.add(fn); return () => this.subs.delete(fn); }
   notify() { this.subs.forEach(fn => fn()); this._schedulePersist(); }
+  // mutate state without triggering a re-render — for text fields with no
+  // on-screen dependents, so typing doesn't rebuild the whole app (and its
+  // photo grid) on every keystroke, which is what caused the visible
+  // scroll/shake behind the keyboard.
+  mutate(fn) { fn(this.state); }
   _schedulePersist() {
     if (this._saveTimer) clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => {

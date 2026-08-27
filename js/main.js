@@ -1,7 +1,7 @@
-import { store } from './state.js?v=2';
-import { renderApp } from './render.js?v=2';
-import { onPhotoReady } from './photos.js?v=2';
-import { importBackupFile } from './backup.js?v=2';
+import { store } from './state.js?v=3';
+import { renderApp } from './render.js?v=3';
+import { onPhotoReady } from './photos.js?v=3';
+import { importBackupFile } from './backup.js?v=3';
 
 const root = document.getElementById('app');
 
@@ -16,7 +16,7 @@ function withFocusPreserved(fn) {
   if (focusKey) {
     const el = root.querySelector('[data-focus-key="' + focusKey.replace(/"/g, '\\"') + '"]');
     if (el) {
-      el.focus();
+      el.focus({ preventScroll: true });
       if (selStart != null && 'setSelectionRange' in el) { try { el.setSelectionRange(selStart, selEnd); } catch (e) {} }
     }
   }

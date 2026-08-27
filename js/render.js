@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=2';
-import { store } from './state.js?v=2';
-import { getPhotoUrl } from './photos.js?v=2';
-import { exportBackup } from './backup.js?v=2';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS } from './constants.js?v=2';
-import * as icon from './icons.js?v=2';
+import { h, clear } from './dom.js?v=3';
+import { store } from './state.js?v=3';
+import { getPhotoUrl } from './photos.js?v=3';
+import { exportBackup } from './backup.js?v=3';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS } from './constants.js?v=3';
+import * as icon from './icons.js?v=3';
 
 const ac = () => store.accent();
 
@@ -365,7 +365,7 @@ function screenSettings() {
     catCard.appendChild(rows);
   }
   catCard.appendChild(h('div', { class: 'field-row' }, [
-    textField({ value: s.newCat, placeholder: 'Swimwear, Co-ords…', focusKey: 'new-cat', onInput: v => store.set({ newCat: v }), onEnter: addCat }),
+    textField({ value: s.newCat, placeholder: 'Swimwear, Co-ords…', focusKey: 'new-cat', onInput: v => store.mutate(st => { st.newCat = v; }), onEnter: addCat }),
     h('button', { class: 'btn btn-primary', onclick: addCat }, 'Add')
   ]));
   function addCat() { const v = store.state.newCat.trim(); if (!v) return; store.set({ customCats: store.state.customCats.concat([v]), subs: { ...store.state.subs, [v]: [] }, newCat: '' }); store.flash('Category added.'); }
@@ -387,7 +387,7 @@ function screenSettings() {
       }
     }, '×')]))));
   subCard.appendChild(h('div', { class: 'field-row' }, [
-    textField({ value: s.newSub, placeholder: 'New subcategory under ' + s.settingsParent, focusKey: 'new-sub', onInput: v => store.set({ newSub: v }), onEnter: addSub }),
+    textField({ value: s.newSub, placeholder: 'New subcategory under ' + s.settingsParent, focusKey: 'new-sub', onInput: v => store.mutate(st => { st.newSub = v; }), onEnter: addSub }),
     h('button', { class: 'btn btn-primary', onclick: addSub }, 'Add')
   ]));
   function addSub() { const v = store.state.newSub.trim(); if (!v) return; store.set({ subs: { ...store.state.subs, [store.state.settingsParent]: (store.state.subs[store.state.settingsParent] || []).concat([v]) }, newSub: '' }); }
@@ -404,7 +404,7 @@ function screenSettings() {
       }
     }, '×')]))));
   tagCard.appendChild(h('div', { class: 'field-row' }, [
-    textField({ value: s.newTag, placeholder: 'Temple, Brunch, Travel…', focusKey: 'new-tag', onInput: v => store.set({ newTag: v }), onEnter: addTag }),
+    textField({ value: s.newTag, placeholder: 'Temple, Brunch, Travel…', focusKey: 'new-tag', onInput: v => store.mutate(st => { st.newTag = v; }), onEnter: addTag }),
     h('button', { class: 'btn btn-primary', onclick: addTag }, 'Add')
   ]));
   function addTag() { const v = store.state.newTag.trim(); if (!v) return; store.set({ tags: store.state.tags.concat([v]), newTag: '' }); }
@@ -463,7 +463,7 @@ function renderSheet() {
   sheet.appendChild(photoRow);
 
   sheet.appendChild(h('div', { class: 'sheet-field-label' }, 'Item name'));
-  sheet.appendChild(textField({ value: sh.name, placeholder: 'Ivory Kanjivaram', focusKey: 'sheet-name', onInput: v => store.set({ sheet: { ...store.state.sheet, name: v } }) }));
+  sheet.appendChild(textField({ value: sh.name, placeholder: 'Ivory Kanjivaram', focusKey: 'sheet-name', onInput: v => store.mutate(st => { st.sheet.name = v; }) }));
 
   sheet.appendChild(h('div', { class: 'sheet-field-label' }, 'Category'));
   sheet.appendChild(h('div', { class: 'sheet-chip-row' }, store.allCats().map(c => h('button', { class: 'sheet-chip' + (sh.cat === c ? ' active' : ''), onclick: () => store.set({ sheet: { ...store.state.sheet, cat: c, sub: null, jtype: null } }) }, c))));
@@ -543,7 +543,7 @@ function renderWizard() {
     body.appendChild(list);
   } else if (curStep.k === 'details') {
     body.appendChild(h('div', { class: 'sheet-field-label' }, 'Event name'));
-    body.appendChild(textField({ value: w.name, placeholder: "Anjali's mehndi", focusKey: 'wiz-name', onInput: v => store.set({ wiz: { ...store.state.wiz, name: v } }) }));
+    body.appendChild(textField({ value: w.name, placeholder: "Anjali's mehndi", focusKey: 'wiz-name', onInput: v => store.mutate(st => { st.wiz.name = v; }) }));
     body.appendChild(h('div', { class: 'sheet-field-label' }, 'Date'));
     body.appendChild(textField({ type: 'date', value: w.date, focusKey: 'wiz-date', onInput: v => store.set({ wiz: { ...store.state.wiz, date: v } }) }));
   } else if (curStep.k === 'review') {

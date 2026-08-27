@@ -1,6 +1,6 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js';
-import { kvGet, kvSet, photoPut, photoDelete } from './db.js';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=2';
+import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=2';
 
 const STATE_KEY = 'state';
 

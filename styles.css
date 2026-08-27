@@ -128,7 +128,12 @@ img{max-width:100%;display:block}
 .wear-badge{position:absolute;bottom:0;left:0;background:var(--ink);color:#F6F4EF;font-size:8.5px;letter-spacing:0.1em;padding:3px 6px;z-index:1}
 
 .closet-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;align-items:start}
-.wcard{border:1px solid var(--line-soft);background:var(--card-bg)}
+/* min-width:0 is load-bearing: .wcard-meta/.wcard-mood use white-space:nowrap,
+   and a CSS grid item's default min-width is auto (its content's min-content
+   size) — so without this, one long unwrapped line anywhere in the grid
+   forces that WHOLE column wider than its 1fr share for every row, which is
+   what was actually causing the "misaligned" cards (not the photos). */
+.wcard{border:1px solid var(--line-soft);background:var(--card-bg);min-width:0}
 .wcard .thumb{aspect-ratio:3/4}
 .wcard .wcard-body{padding:9px 9px 7px}
 .wcard-name{font-family:var(--font-serif);font-size:15.5px;line-height:1.2;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}

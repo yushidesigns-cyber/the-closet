@@ -1,4 +1,4 @@
-import { svg } from './dom.js?v=11';
+import { svg } from './dom.js?v=12';
 
 const wrap = (w, h_, viewBox, inner, stroke = 'currentColor', strokeWidth = 1.5, fill = 'none') =>
   `<svg width="${w}" height="${h_}" viewBox="${viewBox}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}">${inner}</svg>`;
@@ -17,3 +17,4 @@ export const iconGrid = () => svg(wrap(14, 14, '0 0 24 24', '<rect x="4" y="4" w
 export const iconFeed = () => svg(wrap(14, 14, '0 0 24 24', '<rect x="4" y="4" width="16" height="7"></rect><rect x="4" y="13" width="16" height="7"></rect>', 'currentColor', 1.6));
 export const iconCamera = () => svg(wrap(16, 16, '0 0 24 24', '<path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.4"></circle>', 'currentColor', 1.5));
 export const iconNav = (pathD, color, strokeWidth) => svg(`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="${strokeWidth}" stroke-linecap="square"><path d="${pathD}"></path></svg>`);
+export const iconChevronDown = () => svg(wrap(11, 11, '0 0 24 24', '<path d="M5 9l7 7 7-7"></path>', 'currentColor', 1.8));

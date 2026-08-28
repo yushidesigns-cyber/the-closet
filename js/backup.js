@@ -1,5 +1,5 @@
-import { store } from './state.js?v=11';
-import { photoGet, photoPut, photoClearAll } from './db.js?v=11';
+import { store } from './state.js?v=12';
+import { photoGet, photoPut, photoClearAll } from './db.js?v=12';
 
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {

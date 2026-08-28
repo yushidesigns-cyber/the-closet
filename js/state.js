@@ -1,6 +1,6 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=11';
-import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=11';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=12';
+import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=12';
 
 const STATE_KEY = 'state';
 
@@ -10,7 +10,7 @@ function freshState() {
     items, nextId: items.length + 1, deleted: [],
     screen: 'put',
     closetView: DEFAULT_CLOSET_VIEW,
-    cat: 'All', sub: null, sort: 'all', moodFilter: null, q: '',
+    cat: 'All', sub: null, sort: 'all', moodFilter: null, q: '', openDropdown: null,
     mood: 'Ethnic', pulled: false, base: null, moodAtPull: null, slots: [], reveal: 0,
     outfitWorn: false, plannedFromOutfit: false, nonce: 0,
     prefs: {}, pairPrefs: {}, history: [], correct: 0, iqCard: null, lastVerdict: '', focusPair: null,

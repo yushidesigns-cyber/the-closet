@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=11';
-import { store } from './state.js?v=11';
-import { getPhotoUrl } from './photos.js?v=11';
-import { exportBackup } from './backup.js?v=11';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, APP_VERSION } from './constants.js?v=11';
-import * as icon from './icons.js?v=11';
+import { h, clear } from './dom.js?v=12';
+import { store } from './state.js?v=12';
+import { getPhotoUrl } from './photos.js?v=12';
+import { exportBackup } from './backup.js?v=12';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, APP_VERSION } from './constants.js?v=12';
+import * as icon from './icons.js?v=12';
 
 const ac = () => store.accent();
 
@@ -30,6 +30,30 @@ function btn(label, variant, onClick, extra) {
 function iconBtn(iconEl, onClick, opts) {
   opts = opts || {};
   return h('button', { class: 'btn-icon' + (opts.lg ? ' lg' : '') + (opts.locked ? ' locked' : ''), onclick: onClick, title: opts.title || '' }, iconEl);
+}
+
+// a button that opens a small in-page menu of options — used for Sort/Mood
+// on the Closet screen so those filters don't take up a whole scrolling
+// chip row. Only one dropdown is ever open at a time (tracked in state so
+// picking an option or tapping the transparent scrim behind it can close it).
+function filterDropdown(key, label, options, selectedValue, isActive) {
+  const open = store.state.openDropdown === key;
+  const current = options.find(o => o.value === selectedValue);
+  const btnText = isActive && current ? label + ' · ' + current.label : label;
+  const wrap = h('div', { class: 'dropdown-wrap' });
+  wrap.appendChild(h('button', {
+    class: 'dropdown-btn' + (open ? ' dropdown-btn-open' : '') + (isActive ? ' dropdown-btn-active' : ''),
+    onclick: () => store.set({ openDropdown: open ? null : key })
+  }, [h('span', {}, btnText), icon.iconChevronDown()]));
+  if (open) {
+    wrap.appendChild(h('div', { class: 'dropdown-scrim', onclick: () => store.set({ openDropdown: null }) }));
+    wrap.appendChild(h('div', { class: 'dropdown-panel' },
+      options.map(opt => h('button', {
+        class: 'dropdown-item' + (opt.value === selectedValue ? ' active' : ''),
+        onclick: () => store.set(Object.assign({ openDropdown: null }, opt.patch))
+      }, opt.label))));
+  }
+  return wrap;
 }
 
 function textField(props) {
@@ -153,17 +177,23 @@ function screenCloset() {
   }
 
   const sortRow = h('div', { class: 'screen-pad', style: { marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' } });
-  sortRow.appendChild(h('div', { class: 'chip-row' }, [
-    ['all', 'All pieces'], ['starred', 'Starred'], ['most', 'Most worn'], ['least', 'Least worn']
-  ].map(f => h('button', { class: 'chip chip-sm' + (s.sort === f[0] ? ' chip-active' : ''), onclick: () => store.set({ sort: f[0] }) }, f[1]))));
+  const sortOptions = [
+    { value: 'all', label: 'All pieces', patch: { sort: 'all' } },
+    { value: 'starred', label: 'Starred', patch: { sort: 'starred' } },
+    { value: 'most', label: 'Most worn', patch: { sort: 'most' } },
+    { value: 'least', label: 'Least worn', patch: { sort: 'least' } }
+  ];
+  const moodOptions = [{ value: null, label: 'All moods', patch: { moodFilter: null } }].concat(
+    BASE_MOODS.concat(s.tags).map(m => ({ value: m, label: m, patch: { moodFilter: m } })));
+  sortRow.appendChild(h('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } }, [
+    filterDropdown('sort', 'Sort by', sortOptions, s.sort, s.sort !== 'all'),
+    filterDropdown('mood', 'Mood', moodOptions, s.moodFilter, s.moodFilter != null)
+  ]));
   sortRow.appendChild(h('div', { style: { display: 'flex', flex: 'none', border: '1px solid rgba(22,21,15,0.14)' } }, [
     h('button', { class: 'btn-icon', style: { width: '34px', height: '32px', border: 'none', background: s.closetView === 'grid' ? '#16150F' : 'transparent', color: s.closetView === 'grid' ? '#F6F4EF' : '#6B665B' }, title: 'Editorial 2-up', onclick: () => store.set({ closetView: 'grid' }) }, icon.iconGrid()),
     h('button', { class: 'btn-icon', style: { width: '34px', height: '32px', border: 'none', borderLeft: '1px solid rgba(22,21,15,0.14)', background: s.closetView === 'feed' ? '#16150F' : 'transparent', color: s.closetView === 'feed' ? '#F6F4EF' : '#6B665B' }, title: 'Full-bleed feed', onclick: () => store.set({ closetView: 'feed' }) }, icon.iconFeed())
   ]));
   filters.appendChild(sortRow);
-
-  filters.appendChild(h('div', { class: 'chip-row', style: { marginTop: '10px', padding: '0 20px' } },
-    BASE_MOODS.concat(s.tags).map(m => chip(m, s.moodFilter === m, () => store.set({ moodFilter: s.moodFilter === m ? null : m })))));
 
   wrap.appendChild(filters);
 

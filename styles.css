@@ -200,6 +200,7 @@ img{max-width:100%;display:block}
 
 /* ============ planned ============ */
 .event-card{margin-top:16px;border:1px solid var(--line);background:var(--card-bg)}
+.event-card-archived{opacity:0.72;border-color:var(--line-soft)}
 .event-head{padding:15px 15px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .event-name{font-family:var(--font-serif);font-size:24px;line-height:1.15;color:var(--ink)}
 .event-meta{margin-top:5px;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}

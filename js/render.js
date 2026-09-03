@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=14';
-import { store } from './state.js?v=14';
-import { getPhotoUrl } from './photos.js?v=14';
-import { exportBackup } from './backup.js?v=14';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, APP_VERSION } from './constants.js?v=14';
-import * as icon from './icons.js?v=14';
+import { h, clear } from './dom.js?v=15';
+import { store } from './state.js?v=15';
+import { getPhotoUrl } from './photos.js?v=15';
+import { exportBackup } from './backup.js?v=15';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, APP_VERSION } from './constants.js?v=15';
+import * as icon from './icons.js?v=15';
 
 const ac = () => store.accent();
 
@@ -333,6 +333,26 @@ function screenIQ() {
   wrap.appendChild(hist);
   return wrap;
 }
+function eventCard(e, today, fmt) {
+  const days = Math.round((new Date(e.date + 'T00:00:00') - today) / 86400000);
+  const uniq = Array.from(new Set(e.itemIds));
+  const countdown = e.worn ? 'Worn' : (days < 0 ? Math.abs(days) + 'd ago' : (days === 0 ? 'Today' : 'In ' + days + 'd'));
+  const badgeBg = e.worn ? '#16150F' : (days <= 3 ? ac() : 'rgba(22,21,15,0.08)');
+  const badgeFg = (e.worn || days <= 3) ? '#F6F4EF' : '#4B473E';
+  const card = h('div', { class: 'event-card' + (e.worn ? ' event-card-archived' : '') });
+  card.appendChild(h('div', { class: 'event-head' }, [
+    h('div', { style: { minWidth: 0 } }, [h('div', { class: 'event-name' }, e.name), h('div', { class: 'event-meta' }, fmt(e.date) + ' · ' + e.vibe)]),
+    h('div', { class: 'event-badge', style: { background: badgeBg, color: badgeFg } }, countdown)
+  ]));
+  card.appendChild(h('div', { class: 'event-thumbs' }, uniq.slice(0, 6).map(id => thumb(store.byId(id)))));
+  card.appendChild(h('div', { class: 'event-actions' }, [
+    h('button', { class: 'btn', style: { flex: 1, minHeight: '44px', fontSize: '10.5px', letterSpacing: '0.14em', border: '1px solid rgba(22,21,15,0.16)', background: e.worn ? '#16150F' : 'transparent', color: e.worn ? '#F6F4EF' : '#16150F' }, onclick: () => store.eventWorn(e) }, [icon.iconCheck(), h('span', {}, e.worn ? 'Worn · Undo' : 'Mark this outfit worn')]),
+    iconBtn(icon.iconEdit('#16150F'), () => store.editEvent(e), { lg: true, title: 'Edit' }),
+    iconBtn(icon.iconTrash('#16150F'), () => store.removeEvent(e), { lg: true, title: 'Remove' })
+  ]));
+  return card;
+}
+
 function screenPlanned() {
   const s = store.state;
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -347,25 +367,26 @@ function screenPlanned() {
     return wrap;
   }
 
-  s.events.forEach(e => {
-    const days = Math.round((new Date(e.date + 'T00:00:00') - today) / 86400000);
-    const uniq = Array.from(new Set(e.itemIds));
-    const countdown = e.worn ? 'Worn' : (days < 0 ? Math.abs(days) + 'd ago' : (days === 0 ? 'Today' : 'In ' + days + 'd'));
-    const badgeBg = e.worn ? '#16150F' : (days <= 3 ? ac() : 'rgba(22,21,15,0.08)');
-    const badgeFg = (e.worn || days <= 3) ? '#F6F4EF' : '#4B473E';
-    const card = h('div', { class: 'event-card' });
-    card.appendChild(h('div', { class: 'event-head' }, [
-      h('div', { style: { minWidth: 0 } }, [h('div', { class: 'event-name' }, e.name), h('div', { class: 'event-meta' }, fmt(e.date) + ' · ' + e.vibe)]),
-      h('div', { class: 'event-badge', style: { background: badgeBg, color: badgeFg } }, countdown)
-    ]));
-    card.appendChild(h('div', { class: 'event-thumbs' }, uniq.slice(0, 6).map(id => thumb(store.byId(id)))));
-    card.appendChild(h('div', { class: 'event-actions' }, [
-      h('button', { class: 'btn', style: { flex: 1, minHeight: '44px', fontSize: '10.5px', letterSpacing: '0.14em', border: '1px solid rgba(22,21,15,0.16)', background: e.worn ? '#16150F' : 'transparent', color: e.worn ? '#F6F4EF' : '#16150F' }, onclick: () => store.eventWorn(e) }, [icon.iconCheck(), h('span', {}, e.worn ? 'Worn · Undo' : 'Mark this outfit worn')]),
-      iconBtn(icon.iconEdit('#16150F'), () => store.editEvent(e), { lg: true, title: 'Edit' }),
-      iconBtn(icon.iconTrash('#16150F'), () => store.removeEvent(e), { lg: true, title: 'Remove' })
-    ]));
-    wrap.appendChild(card);
-  });
+  // marking an outfit worn moves it out of the upcoming list and into the
+  // archive below — undo (the same button) brings it right back.
+  const upcoming = s.events.filter(e => !e.worn);
+  const archived = s.events.filter(e => e.worn).slice().reverse();
+
+  if (upcoming.length === 0) {
+    wrap.appendChild(emptyBox('Nothing upcoming.', 'Plan an outfit for a date and it will sit here until you mark it worn.'));
+  } else {
+    upcoming.forEach(e => wrap.appendChild(eventCard(e, today, fmt)));
+  }
+
+  if (archived.length > 0) {
+    const archiveHead = h('div', { style: { marginTop: '28px', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderBottom: '1px solid rgba(22,21,15,0.14)', paddingBottom: '8px' } });
+    archiveHead.appendChild(eyebrow('Archive'));
+    archiveHead.appendChild(h('div', { class: 'eyebrow' }, archived.length + ' worn'));
+    wrap.appendChild(archiveHead);
+    const archiveList = h('div', { style: { marginTop: '14px' } });
+    archived.forEach(e => archiveList.appendChild(eventCard(e, today, fmt)));
+    wrap.appendChild(archiveList);
+  }
   return wrap;
 }
 

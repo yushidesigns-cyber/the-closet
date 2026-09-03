@@ -1,7 +1,7 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=14';
-import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=14';
-import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=14';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=15';
+import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=15';
+import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=15';
 
 const STATE_KEY = 'state';
 

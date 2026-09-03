@@ -9,17 +9,17 @@
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-opus-5';
 
-async function callClaude(apiKey, body) {
+async function callClaude(apiKey, body, workspaceId) {
   let res;
   try {
     res = await fetch(API_URL, {
       method: 'POST',
-      headers: {
+      headers: Object.assign({
         'content-type': 'application/json',
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      }, workspaceId ? { 'anthropic-workspace-id': workspaceId } : {}),
       body: JSON.stringify(body)
     });
   } catch (e) {
@@ -30,6 +30,10 @@ async function callClaude(apiKey, body) {
     try { const err = await res.json(); if (err && err.error && err.error.message) msg = err.error.message; } catch (e) { /* non-JSON error body */ }
     if (res.status === 401) msg = 'That API key was rejected. Check it in Settings.';
     if (res.status === 429) msg = 'Rate limited by Claude — wait a moment and try again.';
+    // "identity-linked" API keys span multiple workspaces and reject every
+    // request until told which workspace to run in — surface that as a
+    // pointer to the field we added for it rather than the raw API wording.
+    if (res.status === 400 && /workspace/i.test(msg)) msg = 'This API key needs a Workspace ID too — add it in Settings under Claude fashion match.';
     throw new Error(msg);
   }
   const data = await res.json();
@@ -67,7 +71,7 @@ export function resizeImageToBase64(blob, maxEdge) {
 // Stage 1: look at the inspiration photo alone and describe it in terms of
 // this wardrobe's own vocabulary (exact category/jewellery-type names), so
 // the result can be used to pull real candidates out of the closet.
-export async function analyzeInspiration(apiKey, base64, mediaType, cats, jtypes, moods) {
+export async function analyzeInspiration(apiKey, base64, mediaType, cats, jtypes, moods, workspaceId) {
   const schema = {
     type: 'object',
     properties: {
@@ -107,7 +111,7 @@ export async function analyzeInspiration(apiKey, base64, mediaType, cats, jtypes
     }],
     output_config: { format: { type: 'json_schema', schema } }
   };
-  const result = await callClaude(apiKey, body);
+  const result = await callClaude(apiKey, body, workspaceId);
   result.slots = (result.slots || []).map(s => ({ ...s, jtype: s.jtype || null }));
   return result;
 }
@@ -115,7 +119,7 @@ export async function analyzeInspiration(apiKey, base64, mediaType, cats, jtypes
 // Stage 2: show Claude the inspiration photo again alongside real candidate
 // photos pulled from the closet (already filtered to the right category by
 // the caller), and ask it to actually compare them visually slot by slot.
-export async function matchCandidates(apiKey, base64, mediaType, slots) {
+export async function matchCandidates(apiKey, base64, mediaType, slots, workspaceId) {
   const content = [
     { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
     { type: 'text', text: "That's the inspiration photo. Below are real candidate pieces from this person's own wardrobe, grouped by slot. For each slot, pick the single candidate that is the closest visual match to what that slot needs (color, pattern, silhouette, style) — not just the same category. If none of a slot's candidates are a reasonable match, set has_match to false for that slot rather than forcing a pick." }
@@ -156,5 +160,5 @@ export async function matchCandidates(apiKey, base64, mediaType, slots) {
     messages: [{ role: 'user', content }],
     output_config: { format: { type: 'json_schema', schema } }
   };
-  return callClaude(apiKey, body);
+  return callClaude(apiKey, body, workspaceId);
 }

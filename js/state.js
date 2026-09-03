@@ -1,7 +1,7 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=13';
-import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=13';
-import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=13';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=14';
+import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=14';
+import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=14';
 
 const STATE_KEY = 'state';
 
@@ -20,7 +20,7 @@ function freshState() {
     customCats: [], catEdit: false, builtInRenames: {}, removedCats: [],
     subs: JSON.parse(JSON.stringify(SUBS)), tags: ['Wedding', 'Vacation', 'Date night', 'Temple'],
     newCat: '', newSub: '', newTag: '', settingsParent: 'Sarees', dataNote: '',
-    claudeApiKey: '', inspo: null
+    claudeApiKey: '', claudeWorkspaceId: '', inspo: null
   };
 }
 
@@ -31,7 +31,7 @@ function freshState() {
 // of exportBackup()'s payload — a wardrobe backup file is meant to be shared
 // or moved between devices, and it should never carry the owner's API key.
 const PERSIST_KEYS = ['items', 'nextId', 'deleted', 'closetView', 'prefs', 'pairPrefs', 'history',
-  'correct', 'events', 'nextEventId', 'customCats', 'builtInRenames', 'removedCats', 'subs', 'tags', 'claudeApiKey'];
+  'correct', 'events', 'nextEventId', 'customCats', 'builtInRenames', 'removedCats', 'subs', 'tags', 'claudeApiKey', 'claudeWorkspaceId'];
 
 function pickPersisted(state) {
   const out = {};
@@ -430,11 +430,12 @@ class Store {
     const cur = this.state.inspo;
     if (!cur || !cur.photoBlob) return;
     const apiKey = (this.state.claudeApiKey || '').trim();
+    const workspaceId = (this.state.claudeWorkspaceId || '').trim() || undefined;
     if (!apiKey) { this.setOverlay({ inspo: { ...cur, step: 'error', error: 'Add a Claude API key in Settings first.' } }); return; }
     this.setOverlay({ inspo: { ...cur, step: 'analyzing', error: '' } });
     try {
       const { base64, mediaType } = await resizeImageToBase64(cur.photoBlob, 800);
-      const analysis = await analyzeInspiration(apiKey, base64, mediaType, CATS, JTYPES, BASE_MOODS);
+      const analysis = await analyzeInspiration(apiKey, base64, mediaType, CATS, JTYPES, BASE_MOODS, workspaceId);
       // pull a real, bounded shortlist of candidates per detected slot straight
       // from the closet — never the whole wardrobe (too many photos = too much
       // cost/latency), favourites and more-worn pieces first as a cheap proxy
@@ -465,7 +466,7 @@ class Store {
         this.setOverlay({ inspo: { ...cur, step: 'error', error: "Couldn't load photos for the matching pieces — try again." } });
         return;
       }
-      const results = await matchCandidates(apiKey, base64, mediaType, usableSlots);
+      const results = await matchCandidates(apiKey, base64, mediaType, usableSlots, workspaceId);
       const matches = usableSlots.map((sl, i) => {
         const r = (results.slot_matches || []).find(m => m.slot_index === i);
         return {

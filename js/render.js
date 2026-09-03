@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=13';
-import { store } from './state.js?v=13';
-import { getPhotoUrl } from './photos.js?v=13';
-import { exportBackup } from './backup.js?v=13';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, APP_VERSION } from './constants.js?v=13';
-import * as icon from './icons.js?v=13';
+import { h, clear } from './dom.js?v=14';
+import { store } from './state.js?v=14';
+import { getPhotoUrl } from './photos.js?v=14';
+import { exportBackup } from './backup.js?v=14';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, APP_VERSION } from './constants.js?v=14';
+import * as icon from './icons.js?v=14';
 
 const ac = () => store.accent();
 
@@ -453,8 +453,14 @@ function screenSettings() {
     h('button', { class: 'btn btn-primary', onclick: () => { store.set({ claudeApiKey: store.state.claudeApiKey }); store.flash('API key saved.'); } }, 'Save')
   ]));
   if (s.claudeApiKey) aiCard.appendChild(h('button', { class: 'btn btn-ghost', style: { marginTop: '6px', minHeight: '32px', padding: '0 4px', minWidth: 0, fontSize: '9.5px', letterSpacing: '0.12em' }, onclick: () => store.set({ claudeApiKey: '' }) }, 'Remove key'));
+  aiCard.appendChild(h('div', { class: 'sheet-field-label', style: { marginTop: '14px' } }, 'Workspace ID (only if asked for one)'));
+  aiCard.appendChild(h('div', { class: 'field-row', style: { marginTop: '7px' } }, [
+    textField({ value: s.claudeWorkspaceId, placeholder: 'wrkspc_…', focusKey: 'claude-workspace', onInput: v => store.mutate(st => { st.claudeWorkspaceId = v; }) }),
+    h('button', { class: 'btn btn-primary', onclick: () => { store.set({ claudeWorkspaceId: store.state.claudeWorkspaceId }); store.flash('Workspace ID saved.'); } }, 'Save')
+  ]));
   aiCard.appendChild(h('div', { style: { marginTop: '10px', fontSize: '10.5px', lineHeight: '1.5', color: '#8A8579' } }, [
-    'Get a key at ', h('a', { href: 'https://console.anthropic.com/settings/keys', target: '_blank', rel: 'noopener', style: { color: ac() } }, 'console.anthropic.com'), '. Each match costs a small amount on your Anthropic account — this app never bills you directly.'
+    'Get a key at ', h('a', { href: 'https://console.anthropic.com/settings/keys', target: '_blank', rel: 'noopener', style: { color: ac() } }, 'console.anthropic.com'),
+    '. If Claude rejects requests asking for a workspace id, find it at ', h('a', { href: 'https://console.anthropic.com/settings/workspaces', target: '_blank', rel: 'noopener', style: { color: ac() } }, 'console.anthropic.com/settings/workspaces'), ' and paste it above. Each match costs a small amount on your Anthropic account — this app never bills you directly.'
   ]));
   wrap.appendChild(aiCard);
 

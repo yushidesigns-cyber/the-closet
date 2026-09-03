@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=12';
-import { store } from './state.js?v=12';
-import { getPhotoUrl } from './photos.js?v=12';
-import { exportBackup } from './backup.js?v=12';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, APP_VERSION } from './constants.js?v=12';
-import * as icon from './icons.js?v=12';
+import { h, clear } from './dom.js?v=13';
+import { store } from './state.js?v=13';
+import { getPhotoUrl } from './photos.js?v=13';
+import { exportBackup } from './backup.js?v=13';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, APP_VERSION } from './constants.js?v=13';
+import * as icon from './icons.js?v=13';
 
 const ac = () => store.accent();
 
@@ -100,11 +100,12 @@ function screenOutfit() {
   wrap.appendChild(h('div', { class: 'chip-row', style: { marginTop: '9px', flexWrap: 'wrap' } },
     bases.map(m => chip(m, s.mood === m, () => store.set({ mood: m })))));
 
-  const holdLocks = s.pulled && s.moodAtPull === s.mood && s.slots.some(x => x.locked && x.itemId);
+  const holdLocks = s.pulled && s.moodAtPull === s.mood && SLOTSETS[s.base] && s.slots.some(x => x.locked && x.itemId);
   const pullLabel = !s.pulled ? 'Pull an outfit' : (holdLocks ? 'Pull around the locks' : 'Pull another outfit');
   wrap.appendChild(h('button', { class: 'btn btn-primary btn-block', style: { marginTop: '20px' }, onclick: () => store.pull() }, [
     h('span', {}, pullLabel), icon.iconPull()
   ]));
+  wrap.appendChild(h('button', { class: 'btn btn-outline btn-block', style: { marginTop: '8px' }, onclick: () => store.openInspo() }, 'Match an inspiration photo'));
 
   if (s.pulled) {
     const lockedCount = s.slots.filter(x => x.locked).length;
@@ -442,6 +443,21 @@ function screenSettings() {
   function addTag() { const v = store.state.newTag.trim(); if (!v) return; store.set({ tags: store.state.tags.concat([v]), newTag: '' }); }
   wrap.appendChild(tagCard);
 
+  // Claude API key — powers "Match an inspiration photo" on the Outfit screen
+  const aiCard = h('div', { class: 'settings-card' });
+  aiCard.appendChild(h('div', { class: 'settings-card-title' }, 'Claude fashion match'));
+  aiCard.appendChild(h('div', { style: { marginTop: '10px', fontSize: '11px', lineHeight: '1.6', color: '#6B665B' } },
+    'Powers "Match an inspiration photo" on the Outfit screen. Calls Claude directly from this browser using your own key — stored only on this device, never included in exported backups.'));
+  aiCard.appendChild(h('div', { class: 'field-row' }, [
+    textField({ type: 'password', value: s.claudeApiKey, placeholder: 'sk-ant-…', focusKey: 'claude-key', onInput: v => store.mutate(st => { st.claudeApiKey = v; }) }),
+    h('button', { class: 'btn btn-primary', onclick: () => { store.set({ claudeApiKey: store.state.claudeApiKey }); store.flash('API key saved.'); } }, 'Save')
+  ]));
+  if (s.claudeApiKey) aiCard.appendChild(h('button', { class: 'btn btn-ghost', style: { marginTop: '6px', minHeight: '32px', padding: '0 4px', minWidth: 0, fontSize: '9.5px', letterSpacing: '0.12em' }, onclick: () => store.set({ claudeApiKey: '' }) }, 'Remove key'));
+  aiCard.appendChild(h('div', { style: { marginTop: '10px', fontSize: '10.5px', lineHeight: '1.5', color: '#8A8579' } }, [
+    'Get a key at ', h('a', { href: 'https://console.anthropic.com/settings/keys', target: '_blank', rel: 'noopener', style: { color: ac() } }, 'console.anthropic.com'), '. Each match costs a small amount on your Anthropic account — this app never bills you directly.'
+  ]));
+  wrap.appendChild(aiCard);
+
   // data
   const dataCard = h('div', { class: 'settings-card' });
   dataCard.appendChild(h('div', { class: 'settings-card-title' }, 'Wardrobe data'));
@@ -604,6 +620,100 @@ function renderWizard() {
   return overlay;
 }
 
+// ── inspiration match (upload a look, Claude finds the closest pieces you own) ──
+function renderInspo() {
+  const s = store.state;
+  const insp = s.inspo;
+  if (!insp) return null;
+  const overlay = h('div', { class: 'wizard' });
+  const inner = h('div', { class: 'wizard-inner' });
+
+  const head = h('div', { class: 'wiz-head' });
+  head.appendChild(h('div', { class: 'wiz-head-row' }, [
+    h('div', { class: 'eyebrow' }, 'Inspiration match'),
+    h('button', { class: 'btn btn-ghost', style: { minHeight: '36px', padding: '0 6px', minWidth: 0, fontSize: '10px', letterSpacing: '0.14em' }, onclick: () => store.closeInspo() }, 'Close')
+  ]));
+  head.appendChild(h('div', { class: 'wiz-title' }, {
+    upload: 'Upload a look you like', analyzing: 'Reading the photo…',
+    results: 'Closest pieces in your closet', error: 'Something went wrong'
+  }[insp.step]));
+  inner.appendChild(head);
+
+  const body = h('div', { class: 'wiz-body' });
+
+  if (insp.step === 'upload') {
+    if (insp.photoPreviewUrl) {
+      body.appendChild(h('div', { class: 'thumb', style: { width: '100%', aspectRatio: '3/4', border: '1px solid rgba(22,21,15,0.14)' } }, h('img', { src: insp.photoPreviewUrl, alt: '' })));
+    } else {
+      body.appendChild(h('div', { style: { fontSize: '12px', lineHeight: '1.6', color: '#6B665B' } },
+        'Upload a photo of an outfit you like — from anywhere, not just your own wardrobe. Claude compares it against pieces you actually own and pulls the closest match for each part of the look.'));
+    }
+    const actions = h('div', { class: 'photo-actions', style: { marginTop: '14px' } });
+    actions.appendChild(h('button', { class: 'btn btn-outline', onclick: () => document.getElementById('inspo-choose').click() }, 'Choose photo'));
+    actions.appendChild(h('button', { class: 'btn btn-outline', onclick: () => document.getElementById('inspo-capture').click() }, 'Take photo'));
+    body.appendChild(actions);
+    if (!(s.claudeApiKey || '').trim()) {
+      body.appendChild(h('div', { style: { marginTop: '14px', fontSize: '11px', lineHeight: '1.6', color: ac() } }, 'Add a Claude API key in Settings before matching — this feature calls Claude directly from your browser.'));
+    }
+  } else if (insp.step === 'analyzing') {
+    body.appendChild(h('div', { style: { fontSize: '12px', lineHeight: '1.6', color: '#6B665B' } }, 'Comparing this look against your wardrobe — this can take up to half a minute.'));
+  } else if (insp.step === 'error') {
+    body.appendChild(h('div', { style: { fontSize: '12px', lineHeight: '1.6', color: '#6B665B' } }, insp.error));
+    if (insp.error.indexOf('Settings') !== -1) {
+      body.appendChild(h('button', { class: 'btn btn-outline', style: { marginTop: '12px', minHeight: '42px' }, onclick: () => store.set({ inspo: null, screen: 'settings' }) }, 'Open Settings'));
+    }
+  } else if (insp.step === 'results') {
+    if (insp.summary) body.appendChild(h('div', { style: { fontSize: '12px', lineHeight: '1.6', color: '#6B665B', marginBottom: '14px' } }, insp.summary));
+    if (!insp.matches.length) body.appendChild(h('div', { style: { fontSize: '12px', color: '#8A8579' } }, 'No matches found.'));
+    const list = h('div', { style: { display: 'flex', flexDirection: 'column', gap: '14px' } });
+    insp.matches.forEach((m, i) => {
+      const chosen = m.chosenId ? store.byId(m.chosenId) : null;
+      const block = h('div', {});
+      block.appendChild(h('div', { style: { fontSize: '8.5px', letterSpacing: '0.14em', textTransform: 'uppercase', color: '#8A8579' } }, m.jtype || m.category));
+      if (chosen) {
+        block.appendChild(h('div', { class: 'wiz-review-row', style: { borderBottom: 'none', padding: '6px 0' } }, [
+          thumb(chosen),
+          h('div', { style: { flex: 1, minWidth: 0 } }, [
+            h('div', { style: { fontFamily: "'Instrument Serif',Georgia,serif", fontSize: '17px', color: '#16150F' } }, chosen.name),
+            m.confidence ? h('div', { style: { fontSize: '10.5px', color: '#8A8579', marginTop: '2px' } }, m.confidence + ' confidence') : null,
+            m.reasoning ? h('div', { style: { fontSize: '10.5px', color: '#6B665B', marginTop: '3px' } }, m.reasoning) : null
+          ])
+        ]));
+      } else {
+        block.appendChild(h('div', { style: { fontSize: '11.5px', color: '#8A8579', padding: '6px 0' } }, "Claude didn't find a strong match — pick one below if you'd like, or leave this piece out."));
+      }
+      const alts = (m.candidateIds || []).filter(id => id !== m.chosenId);
+      if (alts.length) {
+        const strip = h('div', { style: { display: 'flex', gap: '6px', marginTop: '4px' } });
+        alts.forEach(id => {
+          const it = store.byId(id);
+          if (!it) return;
+          strip.appendChild(h('button', { class: 'inspo-alt-thumb', title: 'Use this instead', onclick: () => store.chooseInspoMatch(i, id) }, thumb(it)));
+        });
+        block.appendChild(strip);
+      }
+      list.appendChild(block);
+    });
+    body.appendChild(list);
+  }
+  inner.appendChild(body);
+
+  const foot = h('div', { class: 'wiz-foot' });
+  if (insp.step === 'upload') {
+    foot.appendChild(h('button', { class: 'btn btn-primary', style: { flex: 1, minHeight: '50px' }, disabled: !insp.photoBlob, onclick: () => store.runInspoMatch() }, 'Find matches'));
+  } else if (insp.step === 'error') {
+    foot.appendChild(h('button', { class: 'btn btn-outline', style: { flex: 'none', minHeight: '50px', padding: '0 18px' }, onclick: () => store.setInspoPhoto(insp.photoBlob, insp.photoPreviewUrl) }, 'Back'));
+    if (insp.photoBlob) foot.appendChild(h('button', { class: 'btn btn-primary', style: { flex: 1, minHeight: '50px' }, onclick: () => store.runInspoMatch() }, 'Retry'));
+  } else if (insp.step === 'results') {
+    const anyChosen = insp.matches.some(m => m.chosenId);
+    foot.appendChild(h('button', { class: 'btn btn-primary', style: { flex: 1, minHeight: '50px' }, disabled: !anyChosen, onclick: () => store.buildOutfitFromInspo() }, 'Build this outfit'));
+  }
+  if (foot.childNodes.length) inner.appendChild(foot);
+
+  overlay.appendChild(inner);
+  return overlay;
+}
+
 function renderToast() {
   const s = store.state;
   if (!s.toast) return null;
@@ -697,6 +807,8 @@ function renderOverlaysInto(container) {
   if (sheetEl) container.appendChild(sheetEl);
   const wizEl = renderWizard();
   if (wizEl) container.appendChild(wizEl);
+  const inspoEl = renderInspo();
+  if (inspoEl) container.appendChild(inspoEl);
   const toastEl = renderToast();
   if (toastEl) container.appendChild(toastEl);
 }

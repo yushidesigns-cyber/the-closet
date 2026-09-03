@@ -79,7 +79,7 @@ export const NAV = [
 
 // bumped on every deploy while testing, shown above the closet item count
 // so it's obvious whether a fresh build actually loaded vs a cached one.
-export const APP_VERSION = 'v12';
+export const APP_VERSION = 'v13';
 
 export const ACCENT = '#B8412A';
 export const DEFAULT_CLOSET_VIEW = 'grid';

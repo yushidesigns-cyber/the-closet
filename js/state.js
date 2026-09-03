@@ -1,6 +1,7 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=12';
-import { kvGet, kvSet, photoPut, photoDelete } from './db.js?v=12';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=13';
+import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=13';
+import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=13';
 
 const STATE_KEY = 'state';
 
@@ -18,15 +19,19 @@ function freshState() {
     sheet: null, wiz: null, toast: '', undoFn: null,
     customCats: [], catEdit: false, builtInRenames: {}, removedCats: [],
     subs: JSON.parse(JSON.stringify(SUBS)), tags: ['Wedding', 'Vacation', 'Date night', 'Temple'],
-    newCat: '', newSub: '', newTag: '', settingsParent: 'Sarees', dataNote: ''
+    newCat: '', newSub: '', newTag: '', settingsParent: 'Sarees', dataNote: '',
+    claudeApiKey: '', inspo: null
   };
 }
 
 // fields that get written to IndexedDB — everything durable per the
 // local-first data model; UI-only ephemeral fields (current screen, open
 // sheet/wizard, filters, toast) are excluded and reset on reload.
+// claudeApiKey is persisted here (survives reload) but deliberately kept out
+// of exportBackup()'s payload — a wardrobe backup file is meant to be shared
+// or moved between devices, and it should never carry the owner's API key.
 const PERSIST_KEYS = ['items', 'nextId', 'deleted', 'closetView', 'prefs', 'pairPrefs', 'history',
-  'correct', 'events', 'nextEventId', 'customCats', 'builtInRenames', 'removedCats', 'subs', 'tags'];
+  'correct', 'events', 'nextEventId', 'customCats', 'builtInRenames', 'removedCats', 'subs', 'tags', 'claudeApiKey'];
 
 function pickPersisted(state) {
   const out = {};
@@ -125,7 +130,11 @@ class Store {
     if (this.state.outfitWorn) this.bumpWears(this.state.slots.map(s => s.itemId).filter(Boolean), -1);
     const st0 = this.state;
     const bases = BASE_BY_MOOD[st0.mood] || BASE_BY_MOOD.Casual;
-    const holdLocks = st0.pulled && st0.moodAtPull === st0.mood && st0.slots.some(x => x.locked && x.itemId);
+    // an outfit built from an inspiration match has no real SLOTSETS base
+    // (its slots come from whatever Claude detected in the photo, not a
+    // fixed slot template) — re-pulling it always starts fresh rather than
+    // trying to "hold locks around" a base key that buildOutfit can't look up.
+    const holdLocks = st0.pulled && st0.moodAtPull === st0.mood && SLOTSETS[st0.base] && st0.slots.some(x => x.locked && x.itemId);
     const baseKey = holdLocks ? st0.base : bases[st0.nonce % bases.length];
     this.state.nonce += 1;
     const slots = this.buildOutfit(baseKey, holdLocks);
@@ -408,6 +417,86 @@ class Store {
     if (s.sort === 'most') list = list.slice().sort((a, b) => b.wears - a.wears);
     if (s.sort === 'least') list = list.slice().sort((a, b) => a.wears - b.wears);
     return list;
+  }
+
+  // ── inspiration match (Claude vision) ──
+  openInspo() { this.setOverlay({ inspo: { step: 'upload', photoBlob: null, photoPreviewUrl: null, mood: null, summary: '', matches: [], error: '' } }); }
+  closeInspo() { this.setOverlay({ inspo: null }); }
+  setInspoPhoto(blob, previewUrl) {
+    const cur = this.state.inspo || {};
+    this.setOverlay({ inspo: { ...cur, step: 'upload', photoBlob: blob, photoPreviewUrl: previewUrl, error: '' } });
+  }
+  async runInspoMatch() {
+    const cur = this.state.inspo;
+    if (!cur || !cur.photoBlob) return;
+    const apiKey = (this.state.claudeApiKey || '').trim();
+    if (!apiKey) { this.setOverlay({ inspo: { ...cur, step: 'error', error: 'Add a Claude API key in Settings first.' } }); return; }
+    this.setOverlay({ inspo: { ...cur, step: 'analyzing', error: '' } });
+    try {
+      const { base64, mediaType } = await resizeImageToBase64(cur.photoBlob, 800);
+      const analysis = await analyzeInspiration(apiKey, base64, mediaType, CATS, JTYPES, BASE_MOODS);
+      // pull a real, bounded shortlist of candidates per detected slot straight
+      // from the closet — never the whole wardrobe (too many photos = too much
+      // cost/latency), favourites and more-worn pieces first as a cheap proxy
+      // for "pieces this person actually likes," then let Claude's second
+      // pass do the real visual comparison against the inspiration photo.
+      const slotsWithPool = analysis.slots.map(sl => {
+        const pool = this.state.items.filter(i => i.cat === sl.category && (!sl.jtype || i.jtype === sl.jtype) && i.photoId);
+        const cands = pool.slice().sort((a, b) => (b.fav - a.fav) || (b.wears - a.wears)).slice(0, 4);
+        return { category: sl.category, jtype: sl.jtype, description: sl.description, candidateIds: cands.map(c => c.id) };
+      }).filter(sl => sl.candidateIds.length > 0);
+      if (!slotsWithPool.length) {
+        this.setOverlay({ inspo: { ...cur, step: 'error', error: "Nothing in your closet (with a photo) matches the categories in this look yet." } });
+        return;
+      }
+      const slotsWithImages = await Promise.all(slotsWithPool.map(async sl => {
+        const images = [];
+        for (const id of sl.candidateIds) {
+          const it = this.byId(id);
+          const blob = it && it.photoId ? await photoGet(it.photoId) : null;
+          if (!blob) continue;
+          const resized = await resizeImageToBase64(blob, 500);
+          images.push({ id, ...resized });
+        }
+        return { ...sl, images };
+      }));
+      const usableSlots = slotsWithImages.filter(sl => sl.images.length > 0);
+      if (!usableSlots.length) {
+        this.setOverlay({ inspo: { ...cur, step: 'error', error: "Couldn't load photos for the matching pieces — try again." } });
+        return;
+      }
+      const results = await matchCandidates(apiKey, base64, mediaType, usableSlots);
+      const matches = usableSlots.map((sl, i) => {
+        const r = (results.slot_matches || []).find(m => m.slot_index === i);
+        return {
+          category: sl.category, jtype: sl.jtype, description: sl.description, candidateIds: sl.candidateIds,
+          chosenId: r && r.has_match ? r.best_item_id : null,
+          confidence: r ? r.confidence : null, reasoning: r ? r.reasoning : '',
+          alternateIds: r ? (r.alternate_item_ids || []) : []
+        };
+      });
+      this.setOverlay({ inspo: { ...cur, step: 'results', mood: analysis.mood, summary: analysis.summary, matches } });
+    } catch (e) {
+      this.setOverlay({ inspo: { ...this.state.inspo, step: 'error', error: e.message || 'Something went wrong reaching Claude.' } });
+    }
+  }
+  chooseInspoMatch(slotIndex, itemId) {
+    const cur = this.state.inspo;
+    const matches = cur.matches.slice();
+    matches[slotIndex] = { ...matches[slotIndex], chosenId: itemId };
+    this.setOverlay({ inspo: { ...cur, matches } });
+  }
+  buildOutfitFromInspo() {
+    const cur = this.state.inspo;
+    const chosen = cur.matches.filter(m => m.chosenId);
+    const slots = chosen.map(m => ({ label: m.jtype || m.category, cats: [m.category], jtype: m.jtype, itemId: m.chosenId, locked: false, nonce: 0 }));
+    this.timers.forEach(clearTimeout); this.timers = [];
+    this.set({
+      inspo: null, screen: 'put', pulled: true, base: 'Inspiration match',
+      mood: cur.mood || this.state.mood, moodAtPull: cur.mood || this.state.mood,
+      slots, reveal: slots.length, outfitWorn: false, plannedFromOutfit: false
+    });
+    this.flash('Outfit built from your inspiration photo.');
   }
 }
 

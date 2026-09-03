@@ -1,7 +1,7 @@
-import { store } from './state.js?v=12';
-import { renderApp, renderOverlaysOnly } from './render.js?v=12';
-import { onPhotoReady } from './photos.js?v=12';
-import { importBackupFile } from './backup.js?v=12';
+import { store } from './state.js?v=13';
+import { renderApp, renderOverlaysOnly } from './render.js?v=13';
+import { onPhotoReady } from './photos.js?v=13';
+import { importBackupFile } from './backup.js?v=13';
 
 const root = document.getElementById('app');
 
@@ -77,6 +77,13 @@ function handlePhotoFile(file) {
 }
 document.getElementById('photo-choose').addEventListener('change', e => { handlePhotoFile(e.target.files[0]); e.target.value = ''; });
 document.getElementById('photo-capture').addEventListener('change', e => { handlePhotoFile(e.target.files[0]); e.target.value = ''; });
+
+function handleInspoFile(file) {
+  if (!file) return;
+  store.setInspoPhoto(file, URL.createObjectURL(file));
+}
+document.getElementById('inspo-choose').addEventListener('change', e => { handleInspoFile(e.target.files[0]); e.target.value = ''; });
+document.getElementById('inspo-capture').addEventListener('change', e => { handleInspoFile(e.target.files[0]); e.target.value = ''; });
 
 document.getElementById('backup-import').addEventListener('change', async e => {
   const file = e.target.files[0];

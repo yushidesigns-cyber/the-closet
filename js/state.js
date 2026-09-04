@@ -1,7 +1,7 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=15';
-import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=15';
-import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=15';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=16';
+import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=16';
+import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=16';
 
 const STATE_KEY = 'state';
 
@@ -27,9 +27,10 @@ function freshState() {
 // fields that get written to IndexedDB — everything durable per the
 // local-first data model; UI-only ephemeral fields (current screen, open
 // sheet/wizard, filters, toast) are excluded and reset on reload.
-// claudeApiKey is persisted here (survives reload) but deliberately kept out
-// of exportBackup()'s payload — a wardrobe backup file is meant to be shared
-// or moved between devices, and it should never carry the owner's API key.
+// claudeApiKey/claudeWorkspaceId are included on request — exportBackup()
+// carries them too, so restoring a backup on a new device doesn't require
+// re-entering them. That does mean the exported file is as sensitive as the
+// key itself; that tradeoff is called out in the Settings copy.
 const PERSIST_KEYS = ['items', 'nextId', 'deleted', 'closetView', 'prefs', 'pairPrefs', 'history',
   'correct', 'events', 'nextEventId', 'customCats', 'builtInRenames', 'removedCats', 'subs', 'tags', 'claudeApiKey', 'claudeWorkspaceId'];
 

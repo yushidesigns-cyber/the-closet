@@ -1,7 +1,7 @@
 // Calls the Anthropic Messages API directly from the browser using the
-// user's own API key (entered in Settings, stored only in this device's
-// IndexedDB — never included in exported backups, never sent anywhere but
-// api.anthropic.com). Anthropic disables client-side use of its SDKs by
+// user's own API key (entered in Settings, stored in this device's
+// IndexedDB and included in exported backups on request — never sent
+// anywhere but api.anthropic.com). Anthropic disables client-side use of its SDKs by
 // default because a key embedded in browser JS is visible to anyone
 // inspecting network requests; the "dangerous direct browser access" header
 // below is Anthropic's own documented opt-in for exactly this shape of app

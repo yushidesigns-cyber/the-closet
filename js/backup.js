@@ -1,5 +1,5 @@
-import { store } from './state.js?v=15';
-import { photoGet, photoPut, photoClearAll } from './db.js?v=15';
+import { store } from './state.js?v=16';
+import { photoGet, photoPut, photoClearAll } from './db.js?v=16';
 
 function blobToBase64(blob) {
   return new Promise((resolve, reject) => {
@@ -38,6 +38,7 @@ export async function exportBackup() {
     iq: { history: s.history, prefs: s.prefs, pairPrefs: s.pairPrefs, correct: s.correct },
     taxonomy: { customCats: s.customCats, builtInRenames: s.builtInRenames, removedCats: s.removedCats, subs: s.subs, tags: s.tags },
     closetView: s.closetView,
+    claude: { apiKey: s.claudeApiKey, workspaceId: s.claudeWorkspaceId },
     photos
   };
   try {
@@ -77,6 +78,7 @@ export async function importBackupFile(file) {
 
   const iq = payload.iq || {};
   const tax = payload.taxonomy || {};
+  const claude = payload.claude || {};
   store.set({
     items: payload.items || [], deleted: payload.deleted || [], events: payload.events || [],
     nextId: payload.nextId || ((payload.items || []).length + 1),
@@ -85,6 +87,11 @@ export async function importBackupFile(file) {
     customCats: tax.customCats || [], builtInRenames: tax.builtInRenames || {}, removedCats: tax.removedCats || [],
     subs: tax.subs || {}, tags: tax.tags || [],
     closetView: payload.closetView || 'grid',
+    // a backup made before this field existed shouldn't wipe a key that's
+    // already working on this device — only overwrite when the backup
+    // actually carries one.
+    claudeApiKey: claude.apiKey || store.state.claudeApiKey,
+    claudeWorkspaceId: claude.workspaceId || store.state.claudeWorkspaceId,
     sheet: null, wiz: null,
     dataNote: 'Backup imported: ' + (payload.items || []).length + ' pieces restored.'
   });

@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=15';
-import { store } from './state.js?v=15';
-import { getPhotoUrl } from './photos.js?v=15';
-import { exportBackup } from './backup.js?v=15';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, APP_VERSION } from './constants.js?v=15';
-import * as icon from './icons.js?v=15';
+import { h, clear } from './dom.js?v=16';
+import { store } from './state.js?v=16';
+import { getPhotoUrl } from './photos.js?v=16';
+import { exportBackup } from './backup.js?v=16';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, APP_VERSION } from './constants.js?v=16';
+import * as icon from './icons.js?v=16';
 
 const ac = () => store.accent();
 
@@ -468,7 +468,7 @@ function screenSettings() {
   const aiCard = h('div', { class: 'settings-card' });
   aiCard.appendChild(h('div', { class: 'settings-card-title' }, 'Claude fashion match'));
   aiCard.appendChild(h('div', { style: { marginTop: '10px', fontSize: '11px', lineHeight: '1.6', color: '#6B665B' } },
-    'Powers "Match an inspiration photo" on the Outfit screen. Calls Claude directly from this browser using your own key — stored only on this device, never included in exported backups.'));
+    'Powers "Match an inspiration photo" on the Outfit screen. Calls Claude directly from this browser using your own key. Included in exported backups so restoring one carries it over — keep that file as private as the key itself.'));
   aiCard.appendChild(h('div', { class: 'field-row' }, [
     textField({ type: 'password', value: s.claudeApiKey, placeholder: 'sk-ant-…', focusKey: 'claude-key', onInput: v => store.mutate(st => { st.claudeApiKey = v; }) }),
     h('button', { class: 'btn btn-primary', onclick: () => { store.set({ claudeApiKey: store.state.claudeApiKey }); store.flash('API key saved.'); } }, 'Save')

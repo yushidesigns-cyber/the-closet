@@ -1,7 +1,7 @@
-import { store } from './state.js?v=15';
-import { renderApp, renderOverlaysOnly } from './render.js?v=15';
-import { onPhotoReady } from './photos.js?v=15';
-import { importBackupFile } from './backup.js?v=15';
+import { store } from './state.js?v=16';
+import { renderApp, renderOverlaysOnly } from './render.js?v=16';
+import { onPhotoReady } from './photos.js?v=16';
+import { importBackupFile } from './backup.js?v=16';
 
 const root = document.getElementById('app');
 

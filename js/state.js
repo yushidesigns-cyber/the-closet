@@ -1,7 +1,7 @@
-import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=17';
-import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=17';
-import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=17';
+import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, BASE_CATS, BASE_KEY_BY_CAT, ACCENT,
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=18';
+import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=18';
+import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=18';
 
 const STATE_KEY = 'state';
 
@@ -20,7 +20,7 @@ function freshState() {
     customCats: [], catEdit: false, builtInRenames: {}, removedCats: [],
     subs: JSON.parse(JSON.stringify(SUBS)), tags: ['Wedding', 'Vacation', 'Date night', 'Temple'],
     newCat: '', newSub: '', newTag: '', settingsParent: 'Sarees', dataNote: '',
-    claudeApiKey: '', claudeWorkspaceId: '', inspo: null
+    claudeApiKey: '', claudeWorkspaceId: '', inspo: null, basePicker: null
   };
 }
 
@@ -114,19 +114,43 @@ class Store {
     c = c.slice().sort((a, b) => this.score(b, mood) - this.score(a, mood) || a.id - b.id);
     return c[(nonce || 0) % c.length];
   }
-  buildOutfit(baseKey, keepLocks) {
+  buildOutfit(baseKey, keepLocks, forceBaseId) {
     const mood = this.state.mood, prev = this.state.slots;
     const defs = SLOTSETS[baseKey];
     const used = [], out = [];
     defs.forEach((d, idx) => {
       const old = keepLocks ? prev.find(p => p.label === d[0]) : null;
       if (old && old.locked && old.itemId) { used.push(old.itemId); out.push({ label: d[0], cats: d[1], jtype: d[2], itemId: old.itemId, locked: true, nonce: old.nonce || 0 }); return; }
+      // "build around a piece" pins the very first slot (the main garment)
+      // to a specific item and locks it, so the rest gets picked to go with
+      // it and a later re-pull/shuffle never swaps the piece out from under it.
+      if (idx === 0 && forceBaseId) { used.push(forceBaseId); out.push({ label: d[0], cats: d[1], jtype: d[2], itemId: forceBaseId, locked: true, nonce: 0 }); return; }
       const it = this.pick(d[1], d[2], mood, used, this.state.nonce + idx);
       if (it) used.push(it.id);
       out.push({ label: d[0], cats: d[1], jtype: d[2], itemId: it ? it.id : null, locked: false, nonce: this.state.nonce + idx });
     });
     return out;
   }
+  // pick a specific closet item as the outfit's base piece, then fill every
+  // other slot around it — the alternative to pull()'s mood-driven random
+  // base, for when the user already knows exactly what they want to wear.
+  pullAroundItem(itemId) {
+    const item = this.byId(itemId);
+    const baseKey = item && BASE_KEY_BY_CAT[item.cat];
+    if (!baseKey) return;
+    if (this.state.outfitWorn) this.bumpWears(this.state.slots.map(s => s.itemId).filter(Boolean), -1);
+    const mood = (item.moods && item.moods[0]) || this.state.mood;
+    this.state.mood = mood;
+    this.state.nonce += 1;
+    const slots = this.buildOutfit(baseKey, false, itemId);
+    this.timers.forEach(clearTimeout); this.timers = [];
+    this.set({ basePicker: null, pulled: true, base: baseKey, mood, moodAtPull: mood, slots, reveal: 0, outfitWorn: false, plannedFromOutfit: false });
+    const pace = ASSEMBLE_PACE;
+    slots.forEach((_, i) => { const t = setTimeout(() => this.set({ reveal: i + 1 }), pace * (i + 1)); this.timers.push(t); });
+  }
+  openBasePicker() { this.setOverlay({ basePicker: { catFilter: 'All' } }); }
+  closeBasePicker() { this.setOverlay({ basePicker: null }); }
+  setBasePickerCat(cat) { const bp = this.state.basePicker; if (bp) this.setOverlay({ basePicker: { ...bp, catFilter: cat } }); }
   pull() {
     if (this.state.outfitWorn) this.bumpWears(this.state.slots.map(s => s.itemId).filter(Boolean), -1);
     const st0 = this.state;
@@ -295,8 +319,7 @@ class Store {
   wizBack() { const w = this.state.wiz; if (!w) return; if (w.step === 0) return this.setOverlay({ wiz: null }); this.setOverlay({ wiz: { ...w, step: w.step - 1 } }); }
   editEvent(e) {
     const items = e.itemIds.map(id => this.byId(id)).filter(Boolean);
-    const baseCats = ['Sarees', 'Lehenga', 'Dresses', 'Suits', 'Jumpsuit', 'Tops'];
-    const base = items.find(i => baseCats.includes(i.cat));
+    const base = items.find(i => BASE_CATS.includes(i.cat));
     const blouse = items.find(i => i.cat === 'Blouse');
     const bottoms = items.find(i => i.cat === 'Bottoms');
     const layer = items.find(i => i.cat === 'Layering' || i.cat === 'Outerwear');

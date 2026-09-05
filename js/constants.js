@@ -61,6 +61,13 @@ export const SLOTSETS = {
 
 export const BASE_BY_MOOD = {Ethnic:['saree','lehenga','suit'], Dressy:['saree','dress','lehenga','jumpsuit'], Casual:['separates','dress','jumpsuit'], Work:['suit','separates','dress']};
 
+// categories a "base piece" (the main garment an outfit is built around) can
+// come from, and which SLOTSETS template each one pulls the rest of the
+// outfit from — shared by the plan-an-outfit wizard, editing a planned
+// outfit, and "build around a piece" so the mapping only lives in one place.
+export const BASE_CATS = ['Sarees', 'Lehenga', 'Dresses', 'Suits', 'Jumpsuit', 'Tops'];
+export const BASE_KEY_BY_CAT = {Sarees:'saree', Lehenga:'lehenga', Dresses:'dress', Suits:'suit', Jumpsuit:'jumpsuit', Tops:'separates'};
+
 export const NAV_ICONS = {
   closet:'M12 4.2a1.9 1.9 0 1 0 1.4 3.2L4.5 15.4V19h15v-3.6L12 9.4',
   put:'M4 4.8h6.5v6.5H4zM13.5 4.8H20v4h-6.5zM13.5 11.3H20V19h-6.5zM4 13.8h6.5V19H4z',
@@ -79,7 +86,7 @@ export const NAV = [
 
 // bumped on every deploy while testing, shown above the closet item count
 // so it's obvious whether a fresh build actually loaded vs a cached one.
-export const APP_VERSION = 'v17';
+export const APP_VERSION = 'v18';
 
 export const ACCENT = '#B8412A';
 export const DEFAULT_CLOSET_VIEW = 'grid';

@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=17';
-import { store } from './state.js?v=17';
-import { getPhotoUrl } from './photos.js?v=17';
-import { exportBackup } from './backup.js?v=17';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, APP_VERSION } from './constants.js?v=17';
-import * as icon from './icons.js?v=17';
+import { h, clear } from './dom.js?v=18';
+import { store } from './state.js?v=18';
+import { getPhotoUrl } from './photos.js?v=18';
+import { exportBackup } from './backup.js?v=18';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, BASE_CATS, APP_VERSION } from './constants.js?v=18';
+import * as icon from './icons.js?v=18';
 
 const ac = () => store.accent();
 
@@ -105,6 +105,7 @@ function screenOutfit() {
   wrap.appendChild(h('button', { class: 'btn btn-primary btn-block', style: { marginTop: '20px' }, onclick: () => store.pull() }, [
     h('span', {}, pullLabel), icon.iconPull()
   ]));
+  wrap.appendChild(h('button', { class: 'btn btn-outline btn-block', style: { marginTop: '8px' }, onclick: () => store.openBasePicker() }, 'Build around a piece'));
   wrap.appendChild(h('button', { class: 'btn btn-outline btn-block', style: { marginTop: '8px' }, onclick: () => store.openInspo() }, 'Match an inspiration photo'));
 
   if (s.pulled) {
@@ -588,7 +589,7 @@ function renderWizard() {
   const isJewelleryStep = curStep.k.indexOf('jewellery:') === 0;
   if (['base', 'blouse', 'bottoms', 'layering', 'footwear'].includes(curStep.k) || isJewelleryStep) {
     let list = [];
-    if (curStep.k === 'base') list = s.items.filter(i => ['Sarees', 'Lehenga', 'Dresses', 'Suits', 'Jumpsuit', 'Tops'].includes(i.cat) && (!w.vibe || i.moods.includes(w.vibe)));
+    if (curStep.k === 'base') list = s.items.filter(i => BASE_CATS.includes(i.cat) && (!w.vibe || i.moods.includes(w.vibe)));
     if (curStep.k === 'blouse') list = s.items.filter(i => i.cat === 'Blouse');
     if (curStep.k === 'bottoms') list = s.items.filter(i => i.cat === 'Bottoms');
     if (curStep.k === 'layering') list = s.items.filter(i => i.cat === 'Layering' || i.cat === 'Outerwear');
@@ -743,6 +744,48 @@ function renderInspo() {
   return overlay;
 }
 
+// ── build around a piece (pick a base item, skip mood entirely) ──
+function renderBasePicker() {
+  const s = store.state;
+  const bp = s.basePicker;
+  if (!bp) return null;
+  const overlay = h('div', { class: 'wizard' });
+  const inner = h('div', { class: 'wizard-inner' });
+
+  const head = h('div', { class: 'wiz-head' });
+  head.appendChild(h('div', { class: 'wiz-head-row' }, [
+    h('div', { class: 'eyebrow' }, 'Build around a piece'),
+    h('button', { class: 'btn btn-ghost', style: { minHeight: '36px', padding: '0 6px', minWidth: 0, fontSize: '10px', letterSpacing: '0.14em' }, onclick: () => store.closeBasePicker() }, 'Close')
+  ]));
+  head.appendChild(h('div', { class: 'wiz-title' }, 'Choose the base piece'));
+  inner.appendChild(head);
+
+  const body = h('div', { class: 'wiz-body' });
+  const eligible = s.items.filter(i => BASE_CATS.includes(i.cat));
+  body.appendChild(h('div', { class: 'chip-row', style: { flexWrap: 'wrap' } },
+    ['All'].concat(BASE_CATS).map(c => chip(c, bp.catFilter === c, () => store.setBasePickerCat(c), 'chip-sm'))));
+  const list = bp.catFilter === 'All' ? eligible : eligible.filter(i => i.cat === bp.catFilter);
+  if (list.length === 0) {
+    body.appendChild(h('div', { style: { marginTop: '14px', fontSize: '12px', lineHeight: '1.6', color: '#6B665B' } },
+      eligible.length === 0
+        ? "Nothing in the closet yet can anchor an outfit — add a saree, dress, top, or similar first."
+        : 'Nothing in this category. Try another, or pick "All".'));
+  } else {
+    const grid = h('div', { class: 'wiz-grid', style: { marginTop: '14px' } });
+    list.forEach(it => {
+      const opt = h('button', { class: 'wiz-option', onclick: () => store.pullAroundItem(it.id) });
+      opt.appendChild(thumb(it));
+      opt.appendChild(h('div', { class: 'wiz-option-body' }, [h('div', { class: 'wiz-option-name' }, it.name), h('div', { class: 'wiz-option-meta' }, it.sub || it.cat)]));
+      grid.appendChild(opt);
+    });
+    body.appendChild(grid);
+  }
+  inner.appendChild(body);
+
+  overlay.appendChild(inner);
+  return overlay;
+}
+
 function renderToast() {
   const s = store.state;
   if (!s.toast) return null;
@@ -838,6 +881,8 @@ function renderOverlaysInto(container) {
   if (wizEl) container.appendChild(wizEl);
   const inspoEl = renderInspo();
   if (inspoEl) container.appendChild(inspoEl);
+  const basePickerEl = renderBasePicker();
+  if (basePickerEl) container.appendChild(basePickerEl);
   const toastEl = renderToast();
   if (toastEl) container.appendChild(toastEl);
 }

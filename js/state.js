@@ -1,7 +1,7 @@
 import { CATS, TINT, JTYPES, BASE_MOODS, SUBS, PAIRS, SLOTSETS, BASE_BY_MOOD, ACCENT,
-  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=16';
-import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=16';
-import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=16';
+  DEFAULT_CLOSET_VIEW, ASSEMBLE_PACE, SEED } from './constants.js?v=17';
+import { kvGet, kvSet, photoPut, photoDelete, photoGet } from './db.js?v=17';
+import { resizeImageToBase64, analyzeInspiration, matchCandidates } from './claude.js?v=17';
 
 const STATE_KEY = 'state';
 
@@ -263,8 +263,11 @@ class Store {
   wizSteps(w) {
     const base = this.byId(w.baseId);
     const needsBlouse = base && (base.cat === 'Sarees' || base.cat === 'Lehenga');
+    const needsBottoms = base && base.cat === 'Tops';
     const steps = [{ k: 'vibe', t: 'Choose a vibe' }, { k: 'base', t: 'Choose the base piece' }];
     if (needsBlouse || !base) steps.push({ k: 'blouse', t: 'Choose a blouse' });
+    if (needsBottoms || !base) steps.push({ k: 'bottoms', t: 'Choose bottoms' });
+    steps.push({ k: 'layering', t: 'Add a layer' });
     steps.push({ k: 'footwear', t: 'Choose footwear' });
     // one step per jewellery type (earrings, rings, necklace, ...) instead
     // of one grid mixing all of them — and a type with nothing in the
@@ -278,7 +281,7 @@ class Store {
     steps.push({ k: 'details', t: 'Name and date it' }, { k: 'review', t: 'Review' });
     return steps;
   }
-  wizStart() { const d = new Date(); d.setDate(d.getDate() + 14); this.setOverlay({ wiz: { step: 0, vibe: null, baseId: null, blouseId: null, shoeId: null, jewelIds: [], name: '', date: d.toISOString().slice(0, 10) } }); }
+  wizStart() { const d = new Date(); d.setDate(d.getDate() + 14); this.setOverlay({ wiz: { step: 0, vibe: null, baseId: null, blouseId: null, bottomsId: null, layerId: null, shoeId: null, jewelIds: [], name: '', date: d.toISOString().slice(0, 10) } }); }
   wizNext() {
     const w = this.state.wiz; if (!w) return;
     const steps = this.wizSteps(w);
@@ -295,9 +298,12 @@ class Store {
     const baseCats = ['Sarees', 'Lehenga', 'Dresses', 'Suits', 'Jumpsuit', 'Tops'];
     const base = items.find(i => baseCats.includes(i.cat));
     const blouse = items.find(i => i.cat === 'Blouse');
+    const bottoms = items.find(i => i.cat === 'Bottoms');
+    const layer = items.find(i => i.cat === 'Layering' || i.cat === 'Outerwear');
     const shoe = items.find(i => i.cat === 'Footwear');
     const wiz = {
       step: 0, editId: e.id, vibe: e.vibe, baseId: base ? base.id : null, blouseId: blouse ? blouse.id : null,
+      bottomsId: bottoms ? bottoms.id : null, layerId: layer ? layer.id : null,
       shoeId: shoe ? shoe.id : null, jewelIds: items.filter(i => i.cat === 'Jewellery').map(i => i.id), name: e.name, date: e.date
     };
     // editing opens on the review step (the last one) showing everything
@@ -308,7 +314,7 @@ class Store {
   }
   wizSave() {
     const w = this.state.wiz;
-    const ids = Array.from(new Set([w.baseId, w.blouseId, w.shoeId].concat(w.jewelIds).filter(Boolean)));
+    const ids = Array.from(new Set([w.baseId, w.blouseId, w.bottomsId, w.layerId, w.shoeId].concat(w.jewelIds).filter(Boolean)));
     if (w.editId) {
       const prev = this.state.events.find(x => x.id === w.editId);
       if (prev && prev.worn) { this.bumpWears(prev.itemIds, -1); this.bumpWears(ids, 1); }
@@ -325,7 +331,7 @@ class Store {
   wizSelect(kind, id) {
     const w = this.state.wiz;
     if (kind.indexOf('jewellery') === 0) { const has = w.jewelIds.includes(id); this.setOverlay({ wiz: { ...w, jewelIds: has ? w.jewelIds.filter(x => x !== id) : w.jewelIds.concat([id]) } }); return; }
-    const map = { base: 'baseId', blouse: 'blouseId', footwear: 'shoeId' };
+    const map = { base: 'baseId', blouse: 'blouseId', bottoms: 'bottomsId', layering: 'layerId', footwear: 'shoeId' };
     this.state.wiz = { ...w, [map[kind]]: w[map[kind]] === id ? null : id };
     this.notifyOverlay();
     this.wizNextSoft();

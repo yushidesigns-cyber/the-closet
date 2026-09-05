@@ -1,9 +1,9 @@
-import { h, clear } from './dom.js?v=16';
-import { store } from './state.js?v=16';
-import { getPhotoUrl } from './photos.js?v=16';
-import { exportBackup } from './backup.js?v=16';
-import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, APP_VERSION } from './constants.js?v=16';
-import * as icon from './icons.js?v=16';
+import { h, clear } from './dom.js?v=17';
+import { store } from './state.js?v=17';
+import { getPhotoUrl } from './photos.js?v=17';
+import { exportBackup } from './backup.js?v=17';
+import { CATS, JTYPES, BASE_MOODS, NAV, NAV_ICONS, PAIRS, SLOTSETS, APP_VERSION } from './constants.js?v=17';
+import * as icon from './icons.js?v=17';
 
 const ac = () => store.accent();
 
@@ -586,13 +586,15 @@ function renderWizard() {
 
   const body = h('div', { class: 'wiz-body' });
   const isJewelleryStep = curStep.k.indexOf('jewellery:') === 0;
-  if (['base', 'blouse', 'footwear'].includes(curStep.k) || isJewelleryStep) {
+  if (['base', 'blouse', 'bottoms', 'layering', 'footwear'].includes(curStep.k) || isJewelleryStep) {
     let list = [];
     if (curStep.k === 'base') list = s.items.filter(i => ['Sarees', 'Lehenga', 'Dresses', 'Suits', 'Jumpsuit', 'Tops'].includes(i.cat) && (!w.vibe || i.moods.includes(w.vibe)));
     if (curStep.k === 'blouse') list = s.items.filter(i => i.cat === 'Blouse');
+    if (curStep.k === 'bottoms') list = s.items.filter(i => i.cat === 'Bottoms');
+    if (curStep.k === 'layering') list = s.items.filter(i => i.cat === 'Layering' || i.cat === 'Outerwear');
     if (curStep.k === 'footwear') list = s.items.filter(i => i.cat === 'Footwear');
     if (isJewelleryStep) { const jt = curStep.k.slice('jewellery:'.length); list = s.items.filter(i => i.cat === 'Jewellery' && i.jtype === jt); }
-    const selectedId = ({ base: w.baseId, blouse: w.blouseId, footwear: w.shoeId })[curStep.k];
+    const selectedId = ({ base: w.baseId, blouse: w.blouseId, bottoms: w.bottomsId, layering: w.layerId, footwear: w.shoeId })[curStep.k];
     if (list.length === 0) {
       body.appendChild(h('div', { style: { fontSize: '12px', lineHeight: '1.6', color: '#6B665B' } }, 'Nothing in the wardrobe fits this step yet. Skip it, or add a piece from the Closet first.'));
     } else {
@@ -626,7 +628,7 @@ function renderWizard() {
     const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
     body.appendChild(h('div', { class: 'wiz-review-name' }, w.name.trim() || 'Untitled event'));
     body.appendChild(h('div', { class: 'wiz-review-meta' }, fmt(w.date) + ' · ' + (w.vibe || '—')));
-    const roles = [['Base', w.baseId], ['Blouse', w.blouseId], ['Footwear', w.shoeId]].concat(w.jewelIds.map(id => { const it = store.byId(id); return [it && it.jtype ? it.jtype : 'Jewellery', id]; }));
+    const roles = [['Base', w.baseId], ['Blouse', w.blouseId], ['Bottoms', w.bottomsId], ['Layer', w.layerId], ['Footwear', w.shoeId]].concat(w.jewelIds.map(id => { const it = store.byId(id); return [it && it.jtype ? it.jtype : 'Jewellery', id]; }));
     const list = h('div', { style: { marginTop: '14px', display: 'flex', flexDirection: 'column' } });
     roles.filter(r => r[1]).forEach(r => {
       const it = store.byId(r[1]);
